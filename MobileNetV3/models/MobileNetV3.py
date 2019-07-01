@@ -1,34 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-
-__all__ = ['MobileNetV3', 'mobilenetv3']
-
-
-def conv_bn(inp, oup, stride, conv_layer=nn.Conv2d, norm_layer=nn.BatchNorm2d, nlin_layer=nn.ReLU):
-    return nn.Sequential(
-        conv_layer(inp, oup, 3, stride, 1, bias=False),
-        norm_layer(oup),
-        nlin_layer(inplace=True)
-    )
-
-
-def conv_1x1_bn(inp, oup, conv_layer=nn.Conv2d, norm_layer=nn.BatchNorm2d, nlin_layer=nn.ReLU):
-    return nn.Sequential(
-        conv_layer(inp, oup, 1, 1, 0, bias=False),
-        norm_layer(oup),
-        nlin_layer(inplace=True)
-    )
-
-
-class Hswish(nn.Module):
-    def __init__(self, inplace=True):
-        super(Hswish, self).__init__()
-        self.inplace = inplace
-
-    def forward(self, x):
-        return x * F.relu6(x + 3., inplace=self.inplace) / 6.
+from models.utils import *
 
 
 class Hsigmoid(nn.Module):
@@ -67,9 +40,13 @@ class Identity(nn.Module):
         return x
 
 
-def make_divisible(x, divisible_by=8):
-    import numpy as np
-    return int(np.ceil(x * 1. / divisible_by) * divisible_by)
+class Hswish(nn.Module):
+    def __init__(self, inplace=True):
+        super(Hswish, self).__init__()
+        self.inplace = inplace
+
+    def forward(self, x):
+        return x * F.relu6(x + 3., inplace=self.inplace) / 6.
 
 
 class MobileBottleneck(nn.Module):
@@ -220,31 +197,3 @@ class MobileNetV3(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
-
-
-def mobilenetv3(pretrained=False, **kwargs):
-    model = MobileNetV3(**kwargs)
-    if pretrained:
-        state_dict = torch.load('mobilenetv3_small_67.4.pth.tar')
-        model.load_state_dict(state_dict, strict=True)
-        # raise NotImplementedError
-    return model
-
-
-if __name__ == '__main__':
-    net = mobilenetv3()
-    print('mobilenetv3:\n', net)
-    print('Total params: %.2fM' % (sum(p.numel() for p in net.parameters())/1000000.0))
-    input_size=(1, 3, 224, 224)
-    # pip install --upgrade git+https://github.com/kuan-wang/pytorch-OpCounter.git
-    from thop import profile
-    flops, params = profile(net, input_size=input_size)
-    # print(flops)
-    # print(params)
-    print('Total params: %.2fM' % (params/1000000.0))
-    print('Total flops: %.2fM' % (flops/1000000.0))
-    x = torch.randn(input_size)
-    out = net(x)
-
-
-
