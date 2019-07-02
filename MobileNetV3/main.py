@@ -12,7 +12,6 @@ import os
 import time
 import math
 
-from thop import profile
 
 
 # todo 暂时用这个学习率, 先把程序跑起来（这个学习率是condenseNet里的, 要看mobileNetV3论文里怎么设的）
@@ -58,7 +57,7 @@ if __name__ == '__main__':
     log_filename = os.path.join(save_path, 'Console_Log.txt')  # 日志路径
 
     # 读取数据集
-    train_dataset = dataset.Dataset(opt.test_root, opt.path_split, phase='train', input_shape=opt.input_shape)
+    train_dataset = dataset.Dataset(opt.train_root, opt.path_split, phase='train', input_shape=opt.input_shape)
     trainloader = data.DataLoader(train_dataset,
                                   batch_size=opt.train_batch_size,
                                   shuffle=True,
@@ -84,6 +83,10 @@ if __name__ == '__main__':
     optimizer = torch.optim.SGD([{'params': model.parameters()}, {'params': metric_fc.parameters()}],
                                 lr=opt.lr, weight_decay=opt.weight_decay, momentum=opt.momentum)
 
+    print("epoch:{}".format(opt.max_epoch))
+    print("iters/epoch:{}".format(epoch_iters))
+    print("classes:{}".format(len(train_dataset.classes)))
+    print("batch_size:{}".format(opt.train_batch_size))
     start = time.time()
     acc = 0
     for epoch in range(opt.max_epoch):

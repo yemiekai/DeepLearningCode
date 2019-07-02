@@ -4,38 +4,39 @@ class MobileNetV3Config(object):
     pretrain_info_name = "pretrain_info.txt"
 
     # path for linux
-    # path_split = r'/'
+    path_split = r'/'
     # pretrain_path = r'/home/yemiekai/extendDisk/SSD860QVO/TrainingCache/condense_arcface_vggface2/2019-05-27'
-    # checkpoints_path = r'/home/yemiekai/extendDisk/SSD860QVO/TrainingCache/condense_arcface_vggface2'
-    #
-    # train_root = r'/home/yemiekai/extendDisk/SSD860QVO/DataSets/VGGFace2/VGGFace2_train_mtcnnpy_224'
-    # train_list = r'/home/yemiekai/extendDisk/SSD860QVO/DataSets/VGGFace2/train_list.txt'
-    # val_list = r'/home/yemiekai/extendDisk/SSD860QVO/DataSets/VGGFace2/test_list.txt'
-    #
-    # test_root = r'/home/yemiekai/extendDisk/SSD860QVO/DataSets/VGGFace2/VGGFace2_test_mtcnnpy_224'
-    # test_list = r'/home/yemiekai/extendDisk/SSD860QVO/DataSets/VGGFace2/test.txt'
-    #
-    # lfw_root = r'/home/yemiekai/extendDisk/SSD860QVO/DataSets/LFW/LFW_mtcnnpy_224'
-    # lfw_test_list = r'/home/yemiekai/extendDisk/SSD860QVO/DataSets/LFW/lfw_test_pair.txt'
+    checkpoints_path = r'/home/yemiekai/extendDisk/SSD860QVO/TrainingCache/mobileNetV3_vggface2'
+
+    # train_root = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/VGGFace2_train_mtcnnpy_224'
+    train_root = r'/media/yemiekai/Software/DeepLearning_DataSet/VGGFace2_train_mtcnnpy_224'
+    train_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/train_list.txt'
+    val_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test_list.txt'
+
+    test_root = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/VGGFace2_test_mtcnnpy_224'
+    test_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test.txt'
+
+    lfw_root = r'/home/yemiekai/extendDisk/SSD860QVO/LFW/LFW_mtcnnpy_224'
+    lfw_test_list = r'/home/yemiekai/extendDisk/SSD860QVO/LFW/lfw_test_pair.txt'
 
     # path for windows
-    path_split = '\\'
-    checkpoints_path = r'E:\TrainingCache\mobileNetV3_vggface2'
-
-    train_root = r'E:\VGGFace2\VGGFace2_train_mtcnnpy_224'
-    train_list = r'E:\VGGFace2\train_list.txt'
-    val_list = r'E:\VGGFace2\test_list.txt'
-
-    test_root = r'E:\VGGFace2\VGGFace2_test_mtcnnpy_224'
-    test_list = r'E:\VGGFace2\test_list.txt'
-
-    lfw_root = r'E:\LFW\LFW_mtcnnpy_224'
-    lfw_test_list = r'E:\LFW\lfw_test_pair.txt'
+    # path_split = '\\'
+    # checkpoints_path = r'E:\TrainingCache\mobileNetV3_vggface2'
+    #
+    # train_root = r'E:\VGGFace2\VGGFace2_train_mtcnnpy_224'
+    # train_list = r'E:\VGGFace2\train_list.txt'
+    # val_list = r'E:\VGGFace2\test_list.txt'
+    #
+    # test_root = r'E:\VGGFace2\VGGFace2_test_mtcnnpy_224'
+    # test_list = r'E:\VGGFace2\test_list.txt'
+    #
+    # lfw_root = r'E:\LFW\LFW_mtcnnpy_224'
+    # lfw_test_list = r'E:\LFW\lfw_test_pair.txt'
 
     input_shape = (3, 224, 224)
 
-    train_batch_size = 64  # batch size
-    test_batch_size = 64
+    train_batch_size = 256  # batch size
+    test_batch_size = 256
 
     num_workers = 16  # how many workers for loading data
 
