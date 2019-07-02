@@ -9,6 +9,21 @@ import cv2
 import sys
 
 
+def get_lfw_list(pair_list):
+    with open(pair_list, 'r') as fd:
+        pairs = fd.readlines()
+    data_list = []
+    for pair in pairs:
+        splits = pair.split()
+
+        if splits[0] not in data_list:
+            data_list.append(splits[0])
+
+        if splits[1] not in data_list:
+            data_list.append(splits[1])
+    return data_list
+
+
 def get_image_paths(facedir):
     """
     获取facedir目录下所有文件, 返回其路径
@@ -24,11 +39,12 @@ def get_image_paths(facedir):
 
 class Dataset(data.Dataset):
 
-    def __init__(self, root, phase='train', input_shape=(1, 128, 128)):
+    def __init__(self, root, path_spilt, phase='train', input_shape=(1, 128, 128)):
         print("--- init Dataset ---")
         self.phase = phase
         self.input_shape = input_shape
         self.imgs = []
+        self.path_spilt = path_spilt
 
         # 有多少个目录就有多少个class
         self.classes = [path for path in os.listdir(root) if os.path.isdir(root)]
@@ -71,7 +87,7 @@ class Dataset(data.Dataset):
         sample_dir = os.path.dirname(sample_path)  # 当前图片的上级目录的路径
 
         # 标签必须是从0~classNums的连续整数
-        class_name = sample_dir.split('/')[-1]  # 获取类名(当前图片的文件夹名字)
+        class_name = sample_dir.split(self.path_spilt)[-1]  # 获取类名(当前图片的文件夹名字)
         label = self.classes.index(class_name)  # 根据类名从列表里找到它的索引, 把索引号当作标签
 
         data = Image.open(sample_path)
