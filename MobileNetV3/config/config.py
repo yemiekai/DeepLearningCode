@@ -35,8 +35,8 @@ class MobileNetV3Config(object):
 
     input_shape = (3, 224, 224)
 
-    train_batch_size = 256  # batch size
-    test_batch_size = 256
+    train_batch_size = 128  # batch size
+    test_batch_size = 128
 
     num_workers = 16  # how many workers for loading data
 
@@ -46,11 +46,12 @@ class MobileNetV3Config(object):
     metric = 'arc_margin'
     easy_margin = False
 
-    lr = 0.001
-    weight_decay = 0.0001
+    lr = 0.1
+    weight_decay = 0.00001
     momentum = 0.9
+    dropout_rate = 0.8
 
-    max_epoch = 10
+    max_epoch = 20
 
     print_freq = 100  # print info every N batch
     save_freq = 5000  # save model every N batch
@@ -79,7 +80,6 @@ class MobileNetV3Config(object):
     # lr_step = 10
     # lr_decay = 0.95  # when val_loss increase, lr = lr*lr_decay
     # lr_type = 'cosine'
-    # dropout_rate = 0.1
 
     # group_1x1 = 4
     # group_3x3 = 4

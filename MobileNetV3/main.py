@@ -71,10 +71,10 @@ if __name__ == '__main__':
     img_paths = [os.path.join(opt.lfw_root, each) for each in identity_list]
 
     criterion = focal_loss.FocalLoss(gamma=2)
-    metric_fc = metrics.ArcMarginProduct(opt.embedding, opt.num_classes, s=30, m=0.5, easy_margin=opt.easy_margin)
+    metric_fc = metrics.ArcMarginProduct(opt.embedding, opt.num_classes, s=64, m=0.5, easy_margin=opt.easy_margin)
 
     # 加载模型
-    model = mobileNetV3.MobileNetV3(n_class=opt.embedding)
+    model = mobileNetV3.MobileNetV3(n_class=opt.embedding, input_size=opt.input_shape[2], dropout=opt.dropout_rate)
     model.to(device)
     model = DataParallel(model)
     metric_fc.to(device)
