@@ -93,8 +93,9 @@ def load_image(img_path, input_shape=(1, 224, 224)):
         image = image.transpose((2, 0, 1))  # 由(w, h, c)转成(c, w, h)
     image = image[np.newaxis, :, :, :]  # 增加一维, 用于表示batchsize
     image = image.astype(np.float32, copy=False)
-    image -= 127.5
-    image /= 127.5
+    # image -= 127.5
+    # image /= 127.5
+    image = normalizing(image)
     return image
 
 
