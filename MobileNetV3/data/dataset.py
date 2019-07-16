@@ -48,7 +48,7 @@ class Dataset(data.Dataset):
 
         # 有多少个目录就有多少个class
         self.classes = [path for path in os.listdir(root) if os.path.isdir(root)]
-        print("There are [{}] classes in [{}]".format(len(self.classes), root))
+        print("There are [{}] classes(folders) in [{}]".format(len(self.classes), root))
         print("Network input shape is {}".format(input_shape))
 
         # 获取所有图片路径
@@ -90,7 +90,7 @@ class Dataset(data.Dataset):
         class_name = sample_dir.split(self.path_spilt)[-1]  # 获取类名(当前图片的文件夹名字)
         label = self.classes.index(class_name)  # 根据类名从列表里找到它的索引, 把索引号当作标签
 
-        data = Image.open(sample_path)
+        data = Image.open(sample_path)  # Image打开返回的是RGB (H , W , C)
 
         if self.input_shape[0] is 1:  # 输入是1维, 则转成灰度图
             data = data.convert('L')  # 转为灰度图像(1维), 公式L = R*0.299 + G*0.587+ B*0.114
@@ -102,6 +102,39 @@ class Dataset(data.Dataset):
     def __len__(self):
         return len(self.imgs)
 
+
+def caculate_mean_std(imgs):
+    """
+    计算数据集(图片)的总体均值和方差
+    :param imgs: 所有图片的路径
+    :return:
+    """
+    R = []
+    G = []
+    B = []
+
+    # 抽部分图片来计算
+    for i in range(min(5000, len(imgs))):
+        data = Image.open(imgs[i])  # Image打开返回的是RGB (H , W , C)
+
+        # todo : 要不要先归一化? data = data/255
+        R.append(data[:, :, 0].flatten())
+        G.append(data[:, :, 1].flatten())
+        B.append(data[:, :, 2].flatten())
+
+    R = np.array(R).flatten()
+    G = np.array(G).flatten()
+    B = np.array(B).flatten()
+
+    mean_R = np.mean(R)
+    mean_G = np.mean(G)
+    mean_B = np.mean(B)
+
+    std_R = np.std(R)
+    std_G = np.std(G)
+    std_B = np.std(B)
+
+    return mean_R, mean_G, mean_B, std_R, std_G, std_B
 
 # 测试一下
 if __name__ == '__main__':
