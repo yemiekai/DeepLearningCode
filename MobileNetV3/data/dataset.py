@@ -65,7 +65,7 @@ class Dataset(data.Dataset):
         if self.input_shape[0] is 1:
             normalize = T.Normalize(mean=[0.5], std=[0.5])
         else:
-            normalize = T.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+            normalize = T.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0])
 
         if self.phase == 'train':
             self.transforms = T.Compose([

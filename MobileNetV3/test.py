@@ -6,6 +6,27 @@ import torch
 import numpy as np
 import time
 from torch.nn import DataParallel
+import matplotlib.pyplot as plt
+
+
+# 正则化数据
+def normalizing(feature):
+    """
+    # 测试用例:
+    # input1 = np.random.randint(0, 255, (2, 50))
+    # norm = normalizing(input1)
+    # plt.scatter(norm[0, :], norm[1, :])
+    # plt.show()
+    """
+    # 1. 均值0化(减去均值)
+    feature = feature - np.mean(feature)
+
+    # 2. 得到标准差, 方差
+    standard = np.std(feature)  # 标准差
+    variance = np.square(standard)  # 方差
+
+    # 结果是均值为0, 标准差为1
+    return np.divide(feature, variance)  # 除以standard就标准差为1, 除以variance就方差为1
 
 
 def cosin_metric(x1, x2):
@@ -128,4 +149,6 @@ def lfw_test(model, img_paths, identity_list, opt):
     acc, th = test_performance(fe_dict, opt.lfw_test_list)
     print('lfw face verification accuracy: ', acc, 'threshold: ', th)
     return acc
+
+
 
