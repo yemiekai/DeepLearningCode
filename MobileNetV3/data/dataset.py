@@ -130,9 +130,9 @@ def caculate_mean_std(imgs):
     mean_G = np.mean(G)
     mean_B = np.mean(B)
 
-    std_R = np.std(R)
-    std_G = np.std(G)
-    std_B = np.std(B)
+    std_R = np.std(R - mean_R)
+    std_G = np.std(G - mean_G)
+    std_B = np.std(B - mean_B)
 
     return mean_R, mean_G, mean_B, std_R, std_G, std_B
 
