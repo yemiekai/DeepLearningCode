@@ -28,7 +28,7 @@ def normalizing(feature):
     variance = np.square(standard)  # 方差
 
     # 结果是均值为0, 标准差为1
-    return np.divide(feature, variance)  # 除以standard就标准差为1, 除以variance就方差为1
+    return np.divide(feature, standard)  # 除以standard就标准差为1, 除以variance就方差为1
 
 
 def caculate_mean_std(imgs):
@@ -66,9 +66,9 @@ def caculate_mean_std(imgs):
     mean_b = np.mean(b)
 
     # 各通道方差
-    std_r = np.std(r - mean_r)
-    std_g = np.std(g - mean_g)
-    std_b = np.std(b - mean_b)
+    std_r = np.std(r)
+    std_g = np.std(g)
+    std_b = np.std(b)
 
     # 回收内存
     del r, g, b
@@ -137,8 +137,8 @@ class Dataset(data.Dataset):
             normalize = T.Normalize(mean=[0.5], std=[0.5])
         else:
             print("calculating the mean and standard of dataset...")
-            # mean_r, mean_g, mean_b, std_r, std_g, std_b = caculate_mean_std(self.imgs)
-            mean_r, mean_g, mean_b, std_r, std_g, std_b = 0.521, 0.406, 0.353, 0.281, 0.247, 0.239
+            mean_r, mean_g, mean_b, std_r, std_g, std_b = caculate_mean_std(self.imgs)
+            # mean_r, mean_g, mean_b, std_r, std_g, std_b = 0.521, 0.406, 0.353, 0.281, 0.247, 0.239
             normalize = T.Normalize(mean=[mean_r, mean_g, mean_b], std=[std_r, std_g, std_b])
 
         if self.phase == 'train':
