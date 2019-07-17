@@ -94,8 +94,6 @@ if __name__ == '__main__':
         model.train()
 
         for iter, data in enumerate(trainloader):
-            # 训练总进程
-            progress = float(epoch * epoch_iters + iter) / (opt.max_epoch * epoch_iters)
 
             # Adjust learning rate
             lr = adjust_learning_rate(optimizer, epoch, opt, batch=iter, epoch_iters=epoch_iters)
@@ -116,6 +114,8 @@ if __name__ == '__main__':
 
             # 查看训练情况
             if iters % opt.print_freq == 0:
+                # 训练总进程
+                progress = float(epoch * epoch_iters + iter) / (opt.max_epoch * epoch_iters)
 
                 speed = opt.print_freq / (time.time() - start)
                 time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
