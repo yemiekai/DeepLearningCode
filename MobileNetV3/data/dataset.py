@@ -137,8 +137,8 @@ class Dataset(data.Dataset):
             normalize = T.Normalize(mean=[0.5], std=[0.5])
         else:
             print("calculating the mean and standard of dataset...")
-            mean_r, mean_g, mean_b, std_r, std_g, std_b = caculate_mean_std(self.imgs)
-            # mean_r, mean_g, mean_b, std_r, std_g, std_b = 0.521, 0.406, 0.353, 0.281, 0.247, 0.239
+            # mean_r, mean_g, mean_b, std_r, std_g, std_b = caculate_mean_std(self.imgs)
+            mean_r, mean_g, mean_b, std_r, std_g, std_b = 0.521, 0.406, 0.353, 0.281, 0.247, 0.239
             normalize = T.Normalize(mean=[mean_r, mean_g, mean_b], std=[std_r, std_g, std_b])
 
         if self.phase == 'train':

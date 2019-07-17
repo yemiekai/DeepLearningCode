@@ -88,6 +88,7 @@ if __name__ == '__main__':
     print("batch_size:{}".format(opt.train_batch_size))
     start = time.time()
     accuracy = 0
+
     for epoch in range(opt.max_epoch):
 
         model.train()
@@ -102,8 +103,7 @@ if __name__ == '__main__':
             data_input, label = data
             data_input = data_input.to(device)
             label = label.to(device).long()
-            dat = data_input.cpu().numpy()
-            normalizing(dat[0])
+
             feature = model(data_input)  # output (batchSize, 512) embedding
             output = metric_fc(feature, label)  # output  (batchSize, classNums)
             loss = criterion(output, label)
@@ -116,12 +116,7 @@ if __name__ == '__main__':
 
             # 查看训练情况
             if iters % opt.print_freq == 0:
-                output = output.data.cpu().numpy()
-                output = np.argmax(output, axis=1)
-                label = label.data.cpu().numpy()
-                # print(output)
-                # print(label)
-                # acc = np.mean((output == label).astype(int))
+
                 speed = opt.print_freq / (time.time() - start)
                 time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
