@@ -7,6 +7,74 @@ from torchvision import transforms as T
 import torchvision
 import cv2
 import sys
+import gc
+
+
+def normalizing(feature):
+    """
+    正则化数据
+
+    # 测试用例:
+    # input1 = np.random.randint(0, 255, (2, 50))
+    # norm = normalizing(input1)
+    # plt.scatter(norm[0, :], norm[1, :])
+    # plt.show()
+    """
+    # 1. 均值0化(减去均值)
+    feature = feature - np.mean(feature)
+
+    # 2. 得到标准差, 方差
+    standard = np.std(feature)  # 标准差
+    variance = np.square(standard)  # 方差
+
+    # 结果是均值为0, 标准差为1
+    return np.divide(feature, variance)  # 除以standard就标准差为1, 除以variance就方差为1
+
+
+def caculate_mean_std(imgs):
+    """
+    计算数据集(图片)的总体均值和方差
+
+    warning: 这里需要很大内存
+
+    :param imgs: 所有图片的路径
+    :return:
+    """
+    r = []
+    g = []
+    b = []
+
+    # 抽部分图片来计算
+    leng = min(3000, len(imgs))
+    imgs_sample = np.random.permutation(imgs)[0:leng]
+
+    for img in imgs_sample:
+        img_data = np.array(Image.open(img))  # Image打开返回的是RGB (H , W , C)
+
+        img_data = img_data/255.0  # 归一化
+        r.append(img_data[:, :, 0].flatten())
+        g.append(img_data[:, :, 1].flatten())
+        b.append(img_data[:, :, 2].flatten())
+
+    r = np.array(r).flatten()
+    g = np.array(g).flatten()
+    b = np.array(b).flatten()
+
+    # 各通道均值
+    mean_r = np.mean(r)
+    mean_g = np.mean(g)
+    mean_b = np.mean(b)
+
+    # 各通道方差
+    std_r = np.std(r - mean_r)
+    std_g = np.std(g - mean_g)
+    std_b = np.std(b - mean_b)
+
+    # 回收内存
+    del r, g, b
+    gc.collect()
+
+    return mean_r, mean_g, mean_b, std_r, std_g, std_b
 
 
 def get_lfw_list(pair_list):
@@ -59,13 +127,16 @@ class Dataset(data.Dataset):
             self.imgs += image_paths
             sys.stdout.write('\r>> reading: No.[%d]: %s ' % (i, class_name))
             sys.stdout.flush()
+        print("read dataset done.")
 
         self.imgs = np.random.permutation(self.imgs)  # 打乱
 
         if self.input_shape[0] is 1:
             normalize = T.Normalize(mean=[0.5], std=[0.5])
         else:
-            normalize = T.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0])
+            print("calculating the mean and standard of dataset...")
+            mean_r, mean_g, mean_b, std_r, std_g, std_b = caculate_mean_std(self.imgs)
+            normalize = T.Normalize(mean=[mean_r, mean_g, mean_b], std=[std_r, std_g, std_b])
 
         if self.phase == 'train':
             self.transforms = T.Compose([
@@ -102,39 +173,6 @@ class Dataset(data.Dataset):
     def __len__(self):
         return len(self.imgs)
 
-
-def caculate_mean_std(imgs):
-    """
-    计算数据集(图片)的总体均值和方差
-    :param imgs: 所有图片的路径
-    :return:
-    """
-    R = []
-    G = []
-    B = []
-
-    # 抽部分图片来计算
-    for i in range(min(5000, len(imgs))):
-        data = Image.open(imgs[i])  # Image打开返回的是RGB (H , W , C)
-
-        # todo : 要不要先归一化? data = data/255
-        R.append(data[:, :, 0].flatten())
-        G.append(data[:, :, 1].flatten())
-        B.append(data[:, :, 2].flatten())
-
-    R = np.array(R).flatten()
-    G = np.array(G).flatten()
-    B = np.array(B).flatten()
-
-    mean_R = np.mean(R)
-    mean_G = np.mean(G)
-    mean_B = np.mean(B)
-
-    std_R = np.std(R - mean_R)
-    std_G = np.std(G - mean_G)
-    std_B = np.std(B - mean_B)
-
-    return mean_R, mean_G, mean_B, std_R, std_G, std_B
 
 # 测试一下
 if __name__ == '__main__':

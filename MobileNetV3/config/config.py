@@ -13,7 +13,7 @@ class MobileNetV3Config(object):
     train_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/train_list.txt'
     val_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test_list.txt'
 
-    test_root = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/VGGFace2_test_mtcnnpy_224'
+    test_root = r'/media/yemiekai/Software/DeepLearning_DataSet/VGGFace2_test_mtcnnpy_224'
     test_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test.txt'
 
     lfw_root = r'/home/yemiekai/extendDisk/SSD860QVO/LFW/LFW_mtcnnpy_224'
@@ -51,7 +51,7 @@ class MobileNetV3Config(object):
     momentum = 0.9
     dropout_rate = 0.8
 
-    max_epoch = 20
+    max_epoch = 10
 
     print_freq = 100  # print info every N batch
     save_freq = 5000  # save model every N batch

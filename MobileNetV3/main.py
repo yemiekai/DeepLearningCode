@@ -103,7 +103,8 @@ if __name__ == '__main__':
             data_input, label = data
             data_input = data_input.to(device)
             label = label.to(device).long()
-
+            dat = data_input.cpu().numpy()
+            normalizing(dat[0])
             feature = model(data_input)  # output (batchSize, 512) embedding
             output = metric_fc(feature, label)  # output  (batchSize, classNums)
             loss = criterion(output, label)
