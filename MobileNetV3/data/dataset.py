@@ -10,7 +10,24 @@ import sys
 import gc
 
 
+# 正则化数据
 def normalizing(feature):
+    """
+    # 测试用例:
+    # input1 = np.random.randint(0, 255, (2, 50))
+    # norm = normalizing(input1)
+    # plt.scatter(norm[0, :], norm[1, :])
+    # plt.show()
+    """
+
+    mean = np.mean(feature)
+    standard = np.std(feature)  # 标准差
+
+    # 结果是均值为0, 标准差为1
+    return np.divide(feature-mean, standard)  # 除以standard就标准差为1, 除以variance就方差为1
+
+
+def normalizing1(feature):
     """
     正则化数据
 
@@ -65,7 +82,7 @@ def caculate_mean_std(imgs):
     mean_g = np.mean(g)
     mean_b = np.mean(b)
 
-    # 各通道方差
+    # 各通道标准差
     std_r = np.std(r)
     std_g = np.std(g)
     std_b = np.std(b)
@@ -181,7 +198,8 @@ class Dataset(data.Dataset):
 if __name__ == '__main__':
     dataset = Dataset(root=r'/media/yemiekai/SSD860QVO1TB/DataSets/VGGFace2/temp',
                       phase='test',
-                      input_shape=(3, 224, 224))
+                      input_shape=(3, 224, 224),
+                      path_spilt="/")
 
     trainloader = data.DataLoader(dataset, batch_size=10)
     print('{} train iters per epoch:'.format(len(trainloader)))
