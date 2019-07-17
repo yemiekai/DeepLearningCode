@@ -16,7 +16,7 @@ class MobileNetV3Config(object):
     test_root = r'/media/yemiekai/Software/DeepLearning_DataSet/VGGFace2_test_mtcnnpy_224'
     test_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test.txt'
 
-    lfw_root = r'/home/yemiekai/extendDisk/SSD860QVO/LFW/LFW_mtcnnpy_224'
+    lfw_root = r'/media/yemiekai/Software/DeepLearning_DataSet/LFW_mtcnnpy_224'
     lfw_test_list = r'/home/yemiekai/extendDisk/SSD860QVO/LFW/lfw_test_pair.txt'
 
     # path for windows
@@ -53,8 +53,9 @@ class MobileNetV3Config(object):
 
     max_epoch = 10
 
-    print_freq = 100  # print info every N batch
-    save_freq = 5000  # save model every N batch
+    print_freq = 100  # print info every N iteration
+    save_freq = 5000  # save model every N iteration
+    test_freq = 5000  # test accuracy every N iteration
 
     model_name = 'mobileNetV3'
 

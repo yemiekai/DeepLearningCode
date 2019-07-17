@@ -45,7 +45,7 @@ def caculate_mean_std(imgs):
     b = []
 
     # 抽部分图片来计算
-    leng = min(3000, len(imgs))
+    leng = min(1000, len(imgs))
     imgs_sample = np.random.permutation(imgs)[0:leng]
 
     for img in imgs_sample:
@@ -74,6 +74,8 @@ def caculate_mean_std(imgs):
     del r, g, b
     gc.collect()
 
+    print("mean: R({}), G({}), B({})".format(mean_r, mean_g, mean_b))
+    print("standard: R({}), G({}), B({})".format(std_r, std_g, std_b))
     return mean_r, mean_g, mean_b, std_r, std_g, std_b
 
 

@@ -5,13 +5,12 @@ from data import dataset
 from config import config
 from torch.utils import data
 from torch.nn import DataParallel
-from test import *
+from verify import *
 import numpy as np
 import torch
 import os
 import time
 import math
-
 
 
 # todo 暂时用这个学习率, 先把程序跑起来（这个学习率是condenseNet里的, 要看mobileNetV3论文里怎么设的）
@@ -56,7 +55,11 @@ if __name__ == '__main__':
     os.makedirs(save_path, exist_ok=True)
     log_filename = os.path.join(save_path, 'Console_Log.txt')  # 日志路径
 
-    # 读取数据集
+    # 验证集
+    identity_list = dataset.get_lfw_list(opt.lfw_test_list)
+    lfw_img_paths = [os.path.join(opt.lfw_root, each) for each in identity_list]  # 所有图片的路径
+
+    # 读取训练数据集
     train_dataset = dataset.Dataset(opt.train_root, opt.path_split, phase='train', input_shape=opt.input_shape)
     trainloader = data.DataLoader(train_dataset,
                                   batch_size=opt.train_batch_size,
@@ -65,10 +68,6 @@ if __name__ == '__main__':
 
     opt.num_classes = len(train_dataset.classes)  # 分类数量
     epoch_iters = len(trainloader)  # 每个epoch里iter总个数
-
-    # 验证集
-    identity_list = dataset.get_lfw_list(opt.lfw_test_list)
-    img_paths = [os.path.join(opt.lfw_root, each) for each in identity_list]
 
     criterion = focal_loss.FocalLoss(gamma=2)
     metric_fc = metrics.ArcMarginProduct(opt.embedding, opt.num_classes, s=64, m=0.5, easy_margin=opt.easy_margin)
@@ -88,7 +87,7 @@ if __name__ == '__main__':
     print("classes:{}".format(len(train_dataset.classes)))
     print("batch_size:{}".format(opt.train_batch_size))
     start = time.time()
-    acc = 0
+    accuracy = 0
     for epoch in range(opt.max_epoch):
 
         model.train()
@@ -115,6 +114,7 @@ if __name__ == '__main__':
 
             iters = epoch * epoch_iters + iter
 
+            # 查看训练情况
             if iters % opt.print_freq == 0:
                 output = output.data.cpu().numpy()
                 output = np.argmax(output, axis=1)
@@ -127,7 +127,7 @@ if __name__ == '__main__':
 
                 log_info = '{}  train epoch:{}  iter:{}  {:.5} iters/s  loss:{:.5f}  lr:{}   ' \
                            'progress:{:.2f}%  accuracy:{:.2f}%'.format(time_str, epoch, iter, speed, loss.item(),
-                                                                       lr, progress * 100, acc * 100)
+                                                                       lr, progress * 100, accuracy * 100)
                 print(log_info)
                 with open(log_filename, 'a') as fout:
                     fout.write(log_info + '\n')
@@ -135,9 +135,13 @@ if __name__ == '__main__':
                 start = time.time()
 
             # 测一下准确度
-            if iter > 0 and iter % 5000 == 0:
+            if iter > 0 and iter % opt.test_freq == 0:
                 model.eval()
-                acc = lfw_test(model, img_paths, identity_list, opt)
+                accuracy, threshold = lfw_test(model, lfw_img_paths, identity_list, opt)
+                log_info = 'lfw face verification accuracy:{:.5f}%  threshold:{:.5f}%'.format(accuracy, threshold)
+                with open(log_filename, 'a') as fout:
+                    fout.write(log_info + '\n')
+
                 model.train()
 
             # 保存模型
@@ -148,11 +152,17 @@ if __name__ == '__main__':
 
         # 完成一个epoch, 测一下准确度
         model.eval()
-        acc = lfw_test(model, img_paths, identity_list, opt)
+        accuracy, threshold = lfw_test(model, lfw_img_paths, identity_list, opt)
+        log_info = 'lfw face verification accuracy:{:.5f}%  threshold:{:.5f}%'.format(accuracy, threshold)
+        with open(log_filename, 'a') as fout:
+            fout.write(log_info + '\n')
 
         # if opt.display:
         #     visualizer.display_current_results(iters, acc, name='test_acc')
 
     save_model(model, optimizer, save_path, opt.model_name, opt.pretrain_info_name, opt.max_epoch, epoch_iters, 0,
                opt.max_epoch * epoch_iters)
-
+    accuracy, threshold = lfw_test(model, lfw_img_paths, identity_list, opt)
+    log_info = 'lfw face verification accuracy:{:.5f}%  threshold:{:.5f}%'.format(accuracy, threshold)
+    with open(log_filename, 'a') as fout:
+        fout.write(log_info + '\n')
