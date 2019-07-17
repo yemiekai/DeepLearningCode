@@ -39,7 +39,7 @@ def cosin_metric(x1, x2):
     """
     cosin = np.dot(x1, x2) / (np.linalg.norm(x1) * np.linalg.norm(x2))
 
-    return math.acos(min(max(cosin, 1), -1))
+    return math.acos(max(min(cosin, 1), -1))
 
 
 def cal_accuracy(y_score, y_true):
