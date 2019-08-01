@@ -37,7 +37,7 @@ def test_pretrain_model():
     lfw_img_paths = [os.path.join(opt.lfw_root, each) for each in identity_list]  # 所有图片的路径
 
     # 加载模型
-    model = mobileNetV3.MobileNetV3(n_class=opt.embedding, input_size=opt.input_shape[2], dropout=opt.dropout_rate)
+    model = mobileNetV3_MixNet.MobileNetV3_MixNet(n_class=opt.embedding, input_size=opt.input_shape[2], dropout=opt.dropout_rate)
     model.to(device)
     model = DataParallel(model)
 

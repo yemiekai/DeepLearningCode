@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 import math
 
+
 def _split_channels(num_channels, num_groups, mode='equal'):
     if mode is 'exponential':
         split = [int(num_channels // math.pow(2, exp+1)) for exp in range(num_groups)]
@@ -16,6 +17,7 @@ def _split_channels(num_channels, num_groups, mode='equal'):
         return [num_channels]
 
     return split
+
 
 def make_divisible(x, divisible_by=8):
     return int(np.ceil(x * 1. / divisible_by) * divisible_by)
@@ -93,7 +95,7 @@ class MobileBottleneck(nn.Module):
         conv_layer = nn.Conv2d
         norm_layer = nn.BatchNorm2d
         if nl == 'RE':
-            nlin_layer = nn.ReLU # or ReLU6
+            nlin_layer = nn.ReLU  # or ReLU6
         elif nl == 'HS':
             nlin_layer = Hswish
         else:
@@ -192,23 +194,24 @@ class MobileNetV3_MixNet(nn.Module):
         last_channel = 1280
         if mode == 'large':
             # refer to Table 1 in paper
+            # shuffleNetV2提到组卷积太多会影响速度, 因为增加了内存访问开销(MAC)
             mobile_setting = [
                 # k, exp, c,  se,     nl,  s,
-                [[3, 5, 7, 9],  16,  16,  False, 'RE', 1],
-                [[3, 5, 7, 9],  64,  24,  False, 'RE', 2],
-                [[3, 5, 7, 9],  72,  24,  False, 'RE', 1],
-                [[5, 7, 9, 11], 72,  40,  True,  'RE', 2],
-                [[5, 7, 9, 11], 120, 40,  True,  'RE', 1],
-                [[5, 7, 9, 11], 120, 40,  True,  'RE', 1],
-                [[3, 5, 7, 9],  240, 80,  False, 'HS', 2],
-                [[3, 5, 7, 9],  200, 80,  False, 'HS', 1],
-                [[3, 5, 7, 9],  184, 80,  False, 'HS', 1],
-                [[3, 5, 7, 9],  184, 80,  False, 'HS', 1],
-                [[3, 5, 7, 9],  480, 112, True,  'HS', 1],
-                [[3, 5, 7, 9],  672, 112, True,  'HS', 1],
-                [[5, 7, 9, 11], 672, 160, True,  'HS', 2],
-                [[5, 7, 9, 11], 960, 160, True,  'HS', 1],
-                [[5, 7, 9, 11], 960, 160, True,  'HS', 1],
+                [[3, 5],  16,  16,  False, 'RE', 1],
+                [[3, 5],  64,  24,  False, 'RE', 2],
+                [[3, 5],  72,  24,  False, 'RE', 1],
+                [[3, 5, 7], 72,  40,  True,  'RE', 2],
+                [[3, 5, 7], 120, 40,  True,  'RE', 1],
+                [[3, 5, 7], 120, 40,  True,  'RE', 1],
+                [[3, 5],  240, 80,  False, 'HS', 2],
+                [[3, 5],  200, 80,  False, 'HS', 1],
+                [[3, 5],  184, 80,  False, 'HS', 1],
+                [[3, 5],  184, 80,  False, 'HS', 1],
+                [[5, 7],  480, 112, True,  'HS', 1],
+                [[5, 7, 9],  672, 112, True,  'HS', 1],
+                [[5, 7, 9], 672, 160, True,  'HS', 2],
+                [[5, 7, 9], 960, 160, True,  'HS', 1],
+                [[3], 960, 160, True,  'HS', 1],
             ]
         elif mode == 'small':
             # refer to Table 2 in paper
