@@ -5,12 +5,14 @@ from data import dataset
 from config import config
 from torch.utils import data
 from torch.nn import DataParallel
-from verify import *
+from test import *
 import numpy as np
 import torch
 import os
 import time
 import math
+
+from thop import profile
 
 
 # todo 暂时用这个学习率, 先把程序跑起来（这个学习率是condenseNet里的, 要看mobileNetV3论文里怎么设的）
@@ -55,11 +57,7 @@ if __name__ == '__main__':
     os.makedirs(save_path, exist_ok=True)
     log_filename = os.path.join(save_path, 'Console_Log.txt')  # 日志路径
 
-    # 验证集
-    identity_list = dataset.get_lfw_list(opt.lfw_test_list)
-    lfw_img_paths = [os.path.join(opt.lfw_root, each) for each in identity_list]  # 所有图片的路径
-
-    # 读取训练数据集
+    # 读取数据集
     train_dataset = dataset.Dataset(opt.train_root, opt.path_split, phase='train', input_shape=opt.input_shape)
     trainloader = data.DataLoader(train_dataset,
                                   batch_size=opt.train_batch_size,
@@ -69,11 +67,15 @@ if __name__ == '__main__':
     opt.num_classes = len(train_dataset.classes)  # 分类数量
     epoch_iters = len(trainloader)  # 每个epoch里iter总个数
 
+    # 验证集
+    identity_list = dataset.get_lfw_list(opt.lfw_test_list)
+    img_paths = [os.path.join(opt.lfw_root, each) for each in identity_list]
+
     criterion = focal_loss.FocalLoss(gamma=2)
-    metric_fc = metrics.ArcMarginProduct(opt.embedding, opt.num_classes, s=64, m=0.5, easy_margin=opt.easy_margin)
+    metric_fc = metrics.ArcMarginProduct(opt.embedding, opt.num_classes, s=30, m=0.5, easy_margin=opt.easy_margin)
 
     # 加载模型
-    model = mobileNetV3.MobileNetV3(n_class=opt.embedding, input_size=opt.input_shape[2], dropout=opt.dropout_rate)
+    model = mobileNetV3.MobileNetV3(n_class=opt.embedding)
     model.to(device)
     model = DataParallel(model)
     metric_fc.to(device)
@@ -82,18 +84,15 @@ if __name__ == '__main__':
     optimizer = torch.optim.SGD([{'params': model.parameters()}, {'params': metric_fc.parameters()}],
                                 lr=opt.lr, weight_decay=opt.weight_decay, momentum=opt.momentum)
 
-    print("epoch:{}".format(opt.max_epoch))
-    print("iters/epoch:{}".format(epoch_iters))
-    print("classes:{}".format(len(train_dataset.classes)))
-    print("batch_size:{}".format(opt.train_batch_size))
     start = time.time()
-    accuracy = 0
-
+    acc = 0
     for epoch in range(opt.max_epoch):
 
         model.train()
 
         for iter, data in enumerate(trainloader):
+            # 训练总进程
+            progress = float(epoch * epoch_iters + iter) / (opt.max_epoch * epoch_iters)
 
             # Adjust learning rate
             lr = adjust_learning_rate(optimizer, epoch, opt, batch=iter, epoch_iters=epoch_iters)
@@ -112,17 +111,19 @@ if __name__ == '__main__':
 
             iters = epoch * epoch_iters + iter
 
-            # 查看训练情况
             if iters % opt.print_freq == 0:
-                # 训练总进程
-                progress = float(epoch * epoch_iters + iter) / (opt.max_epoch * epoch_iters)
-
+                output = output.data.cpu().numpy()
+                output = np.argmax(output, axis=1)
+                label = label.data.cpu().numpy()
+                # print(output)
+                # print(label)
+                # acc = np.mean((output == label).astype(int))
                 speed = opt.print_freq / (time.time() - start)
                 time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
                 log_info = '{}  train epoch:{}  iter:{}  {:.5} iters/s  loss:{:.5f}  lr:{}   ' \
                            'progress:{:.2f}%  accuracy:{:.2f}%'.format(time_str, epoch, iter, speed, loss.item(),
-                                                                       lr, progress * 100, accuracy * 100)
+                                                                       lr, progress * 100, acc * 100)
                 print(log_info)
                 with open(log_filename, 'a') as fout:
                     fout.write(log_info + '\n')
@@ -130,13 +131,9 @@ if __name__ == '__main__':
                 start = time.time()
 
             # 测一下准确度
-            if iter > 0 and iter % opt.test_freq == 0:
+            if iter > 0 and iter % 5000 == 0:
                 model.eval()
-                accuracy, threshold = lfw_test(model, lfw_img_paths, identity_list, opt)
-                log_info = 'lfw face verification accuracy:{:.5f}%  threshold:{:.5f}%'.format(accuracy, threshold)
-                with open(log_filename, 'a') as fout:
-                    fout.write(log_info + '\n')
-
+                acc = lfw_test(model, img_paths, identity_list, opt)
                 model.train()
 
             # 保存模型
@@ -147,17 +144,11 @@ if __name__ == '__main__':
 
         # 完成一个epoch, 测一下准确度
         model.eval()
-        accuracy, threshold = lfw_test(model, lfw_img_paths, identity_list, opt)
-        log_info = 'lfw face verification accuracy:{:.5f}%  threshold:{:.5f}%'.format(accuracy, threshold)
-        with open(log_filename, 'a') as fout:
-            fout.write(log_info + '\n')
+        acc = lfw_test(model, img_paths, identity_list, opt)
 
         # if opt.display:
         #     visualizer.display_current_results(iters, acc, name='test_acc')
 
     save_model(model, optimizer, save_path, opt.model_name, opt.pretrain_info_name, opt.max_epoch, epoch_iters, 0,
                opt.max_epoch * epoch_iters)
-    accuracy, threshold = lfw_test(model, lfw_img_paths, identity_list, opt)
-    log_info = 'lfw face verification accuracy:{:.5f}%  threshold:{:.5f}%'.format(accuracy, threshold)
-    with open(log_filename, 'a') as fout:
-        fout.write(log_info + '\n')
+
