@@ -188,7 +188,7 @@ class MobileNetV3(nn.Module):
 
         # make it nn.Sequential
         self.features = nn.Sequential(*self.features)
-
+        self.features = nn.DataParallel(self.features)
         # building classifier
         self.classifier = nn.Sequential(
             nn.Dropout(p=dropout),    # refer to paper section 6
