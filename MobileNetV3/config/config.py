@@ -9,12 +9,15 @@ class MobileNetV3Config(object):
     checkpoints_path = r'/home/yemiekai/extendDisk/SSD860QVO/TrainingCache/mobileNetV3_vggface2'
 
     # train_root = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/VGGFace2_train_mtcnnpy_224'
-    train_root = r'/media/yemiekai/Software/DeepLearning_DataSet/VGGFace2_train_mtcnnpy_224'
-    train_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/train_list.txt'
-    val_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test_list.txt'
+    # train_root = r'/media/yemiekai/Software/DeepLearning_DataSet/VGGFace2_train_mtcnnpy_224'
+    # train_root = r'/home/yemiekai/extendDisk/SSD860QVO/CASIA-WebFace/CASIA-WebFace_aligned_224'
+    train_root = r'/media/yemiekai/Software/DeepLearning_DataSet/CASIA-WebFace_aligned_224'
+
+    # train_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/train_list.txt'
+    # val_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test_list.txt'
 
     test_root = r'/media/yemiekai/Software/DeepLearning_DataSet/VGGFace2_test_mtcnnpy_224'
-    test_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test.txt'
+    # test_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test.txt'
 
     lfw_root = r'/media/yemiekai/Software/DeepLearning_DataSet/LFW_mtcnnpy_224'
     lfw_test_list = r'/home/yemiekai/extendDisk/SSD860QVO/LFW/lfw_test_pair.txt'
@@ -51,7 +54,7 @@ class MobileNetV3Config(object):
     momentum = 0.9
     dropout_rate = 0.8
 
-    max_epoch = 10
+    max_epoch = 50
 
     print_freq = 100  # print info every N iteration
     save_freq = 5000  # save model every N iteration

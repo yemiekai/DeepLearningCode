@@ -44,7 +44,8 @@ def save_model(model, optimizer, save_path, name, pretrain_info_name, epoch, ite
 if __name__ == '__main__':
 
     print("You have ", torch.cuda.device_count(), " GPUs")
-    device = torch.device("cuda")
+    device = torch.device("cuda:0")
+
 
     # 参数
     opt = config.MobileNetV3Config()
@@ -71,13 +72,13 @@ if __name__ == '__main__':
 
     criterion = focal_loss.FocalLoss(gamma=2)
     metric_fc = metrics.ArcMarginProduct(opt.embedding, opt.num_classes, s=64, m=0.5, easy_margin=opt.easy_margin)
+    metric_fc = metric_fc.cuda()
+    # metric_fc = DataParallel(metric_fc)
 
     # 加载模型
     model = mobileNetV3.MobileNetV3(n_class=opt.embedding, input_size=opt.input_shape[2], dropout=opt.dropout_rate)
-    model.to(device)
-    model = DataParallel(model)
-    metric_fc.to(device)
-    metric_fc = DataParallel(metric_fc)
+    model = model.cuda()
+    # model = DataParallel(model)
 
     optimizer = torch.optim.SGD([{'params': model.parameters()}, {'params': metric_fc.parameters()}],
                                 lr=opt.lr, weight_decay=opt.weight_decay, momentum=opt.momentum)
@@ -99,8 +100,9 @@ if __name__ == '__main__':
             lr = adjust_learning_rate(optimizer, epoch, opt, batch=iter, epoch_iters=epoch_iters)
 
             data_input, label = data
-            data_input = data_input.to(device)
-            label = label.to(device).long()
+            # data_input, label = data_input.to(device), label.to(device)
+            data_input, label = data_input.cuda(), label.cuda()
+            label = label.long()
 
             feature = model(data_input)  # output (batchSize, 512) embedding
             output = metric_fc(feature, label)  # output  (batchSize, classNums)

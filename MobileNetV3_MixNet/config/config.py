@@ -35,8 +35,8 @@ class MobileNetV3Config(object):
 
     input_shape = (3, 224, 224)
 
-    train_batch_size = 128  # batch size
-    test_batch_size = 128
+    train_batch_size = 256  # batch size
+    test_batch_size = 256
 
     num_workers = 16  # how many workers for loading data
 
@@ -51,7 +51,7 @@ class MobileNetV3Config(object):
     momentum = 0.9
     dropout_rate = 0.8
 
-    max_epoch = 20
+    max_epoch = 10
 
     print_freq = 100  # print info every N iteration
     save_freq = 5000  # save model every N iteration
