@@ -13,12 +13,18 @@ import time
 import math
 
 
-# todo 暂时用这个学习率, 先把程序跑起来（这个学习率是condenseNet里的, 要看mobileNetV3论文里怎么设的）
-def adjust_learning_rate(optimizer, epoch_now, args, batch=None, epoch_iters=None):
-
+def adjust_learning_rate(optimizer, epoch_now, args, batch=None, epoch_iters=None, mode='cosine'):
     T_total = args.max_epoch * epoch_iters
     T_cur = (epoch_now % args.max_epoch) * epoch_iters + batch
-    lr = 0.5 * args.lr * (1 + math.cos(math.pi * T_cur / T_total))
+    lr = args.lr
+
+    if mode == 'cosine':
+        lr = 0.5 * args.lr * (1 + math.cos(math.pi * T_cur / T_total))
+    elif mode == 'exponent':
+        lr = args.lr * (0.1 ** (T_cur*3//T_total))  # 每训练完总数的1/3,学习率乘以0.1
+    elif mode == 'stairs':
+        lr = args.lr - ((T_cur*1000//T_total) * (lr/1000))
+        pass
 
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
@@ -73,15 +79,18 @@ if __name__ == '__main__':
     criterion = focal_loss.FocalLoss(gamma=2)
     metric_fc = metrics.ArcMarginProduct(opt.embedding, opt.num_classes, s=64, m=0.5, easy_margin=opt.easy_margin)
     metric_fc = metric_fc.cuda()
-    # metric_fc = DataParallel(metric_fc)
+    metric_fc = DataParallel(metric_fc)
 
     # 加载模型
     model = mobileNetV3.MobileNetV3(n_class=opt.embedding, input_size=opt.input_shape[2], dropout=opt.dropout_rate)
     model = model.cuda()
-    # model = DataParallel(model)
+    model = DataParallel(model)
 
-    optimizer = torch.optim.SGD([{'params': model.parameters()}, {'params': metric_fc.parameters()}],
-                                lr=opt.lr, weight_decay=opt.weight_decay, momentum=opt.momentum)
+    # optimizer = torch.optim.SGD([{'params': model.parameters()}, {'params': metric_fc.parameters()}],
+    #                             lr=opt.lr, weight_decay=opt.weight_decay, momentum=opt.momentum)
+
+    optimizer = torch.optim.Adam([{'params': model.parameters()}, {'params': metric_fc.parameters()}],
+                                 lr=opt.lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 
     print("epoch:{}".format(opt.max_epoch))
     print("iters/epoch:{}".format(epoch_iters))
@@ -96,8 +105,9 @@ if __name__ == '__main__':
 
         for iter, data in enumerate(trainloader):
 
-            # Adjust learning rate
-            lr = adjust_learning_rate(optimizer, epoch, opt, batch=iter, epoch_iters=epoch_iters)
+            # Adjust learning rate(计算学习率可能会耗时, 所以间隔100个iter算一次)
+            if iter == 0 or iter % 500 == 0:
+                lr = adjust_learning_rate(optimizer, epoch, opt, batch=iter, epoch_iters=epoch_iters)
 
             data_input, label = data
             # data_input, label = data_input.to(device), label.to(device)

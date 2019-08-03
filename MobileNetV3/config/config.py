@@ -4,42 +4,42 @@ class MobileNetV3Config(object):
     pretrain_info_name = "pretrain_info.txt"
 
     # path for linux
-    path_split = r'/'
+    # path_split = r'/'
     # pretrain_path = r'/home/yemiekai/extendDisk/SSD860QVO/TrainingCache/condense_arcface_vggface2/2019-05-27'
-    checkpoints_path = r'/home/yemiekai/extendDisk/SSD860QVO/TrainingCache/mobileNetV3_vggface2'
+    # checkpoints_path = r'/home/yemiekai/extendDisk/SSD860QVO/TrainingCache/mobileNetV3_vggface2'
 
     # train_root = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/VGGFace2_train_mtcnnpy_224'
     # train_root = r'/media/yemiekai/Software/DeepLearning_DataSet/VGGFace2_train_mtcnnpy_224'
     # train_root = r'/home/yemiekai/extendDisk/SSD860QVO/CASIA-WebFace/CASIA-WebFace_aligned_224'
-    train_root = r'/media/yemiekai/Software/DeepLearning_DataSet/CASIA-WebFace_aligned_224'
+    # train_root = r'/media/yemiekai/Software/DeepLearning_DataSet/CASIA-WebFace_aligned_224'
 
     # train_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/train_list.txt'
     # val_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test_list.txt'
 
-    test_root = r'/media/yemiekai/Software/DeepLearning_DataSet/VGGFace2_test_mtcnnpy_224'
+    # test_root = r'/media/yemiekai/Software/DeepLearning_DataSet/VGGFace2_test_mtcnnpy_224'
     # test_list = r'/home/yemiekai/extendDisk/SSD860QVO/VGGFace2/test.txt'
 
-    lfw_root = r'/media/yemiekai/Software/DeepLearning_DataSet/LFW_mtcnnpy_224'
-    lfw_test_list = r'/home/yemiekai/extendDisk/SSD860QVO/LFW/lfw_test_pair.txt'
+    # lfw_root = r'/media/yemiekai/Software/DeepLearning_DataSet/LFW_mtcnnpy_224'
+    # lfw_test_list = r'/home/yemiekai/extendDisk/SSD860QVO/LFW/lfw_test_pair.txt'
 
     # path for windows
-    # path_split = '\\'
-    # checkpoints_path = r'E:\TrainingCache\mobileNetV3_vggface2'
+    path_split = '\\'
+    checkpoints_path = r'E:\TrainingCache\mobileNetV3_CASIA'
     #
-    # train_root = r'E:\VGGFace2\VGGFace2_train_mtcnnpy_224'
+    train_root = r'F:\DeepLearning_DataSet\CASIA-WebFace_aligned_224'
     # train_list = r'E:\VGGFace2\train_list.txt'
     # val_list = r'E:\VGGFace2\test_list.txt'
     #
     # test_root = r'E:\VGGFace2\VGGFace2_test_mtcnnpy_224'
     # test_list = r'E:\VGGFace2\test_list.txt'
     #
-    # lfw_root = r'E:\LFW\LFW_mtcnnpy_224'
-    # lfw_test_list = r'E:\LFW\lfw_test_pair.txt'
+    lfw_root = r'F:\DeepLearning_DataSet\LFW_mtcnnpy_224'
+    lfw_test_list = r'F:\DeepLearning_DataSet\lfw_test_pair.txt'
 
     input_shape = (3, 224, 224)
 
-    train_batch_size = 128  # batch size
-    test_batch_size = 128
+    train_batch_size = 256  # batch size
+    test_batch_size = 256
 
     num_workers = 16  # how many workers for loading data
 
@@ -54,7 +54,7 @@ class MobileNetV3Config(object):
     momentum = 0.9
     dropout_rate = 0.8
 
-    max_epoch = 50
+    max_epoch = 300
 
     print_freq = 100  # print info every N iteration
     save_freq = 5000  # save model every N iteration

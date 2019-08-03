@@ -117,7 +117,7 @@ def get_featurs(model, test_list, batch_size=32, input_shape=(1, 224, 224)):
             cnt += 1
 
             data = torch.from_numpy(images)
-            data = data.to(torch.device("cuda"))
+            data = data.cuda()
             output = model(data)  # 一次出来一个批, output shape = (batchsize, embedding)
             output = output.data.cpu().numpy()
             # if input_shape[0] is 1:
