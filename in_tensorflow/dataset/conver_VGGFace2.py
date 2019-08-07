@@ -109,14 +109,64 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
                         class_name = os.path.basename(os.path.dirname(filenames[i]))
                         class_id = class_names_to_ids[class_name]
 
-                        example = dataset_utils.image_to_tfexample(image_data, b'jpg', height, width, class_id)
+                        example = tf.train.Example(features=tf.train.Features(feature={
+                                                    'image/encoded': dataset_utils.bytes_feature(image_data),
+                                                    'image/format': dataset_utils.bytes_feature(b'jpg'),
+                                                    'image/class/label': dataset_utils.int64_feature(class_id),
+                                                    'image/height': dataset_utils.int64_feature(height),
+                                                    'image/width': dataset_utils.int64_feature(width)}))
                         tfrecord_writer.write(example.SerializeToString())
 
     sys.stdout.write('\n')
     sys.stdout.flush()
 
 
-def run(dataset_dir):
+def _parse_function(serialized_example, *args, **kwargs):
+    features = {
+        'image/encoded': tf.FixedLenFeature([], tf.string),
+        'image/format': tf.FixedLenFeature([], tf.string),
+        'image/class/label': tf.FixedLenFeature([], tf.int64),
+        'image/height': tf.FixedLenFeature([], tf.int64),
+        'image/width': tf.FixedLenFeature([], tf.int64)}
+
+    parsed = tf.parse_single_example(serialized_example, features)
+
+    img = parsed['image/encoded']
+    label = parsed['image/class/label']
+
+    # img = tf.image.decode_png(img, channels=3)
+    return img, label
+
+
+#  https://www.tensorflow.org/guide/datasets?hl=zh-cn
+def decode_from_tfrecord(file_name):
+    # **1.把所有的 tfrecord 文件名列表写入队列中
+    filinames = []
+    filinames.append(file_name)
+    dataset = tf.data.TFRecordDataset(filinames)
+    dataset = dataset.map(_parse_function)
+    dataset = dataset.repeat()  # Repeat the input indefinitely.
+    dataset = dataset.batch(32)
+    iterator = dataset.make_initializable_iterator()
+
+    sess = tf.Session()
+
+    sess.run([tf.global_variables_initializer(), iterator.initializer])
+
+    coord = tf.train.Coordinator()
+    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    for i in range(5):
+        _X_batch, _y_batch = sess.run(iterator.get_next())
+        print('\n** batch %d' % i)
+        print('_X_batch.shape:', _X_batch.shape)
+        print('_y_batch.shape:', _y_batch.shape)
+
+    # **6.最后记得把队列关掉
+    coord.request_stop()
+    coord.join(threads)
+
+
+def cover_to_tfrecord(dataset_dir):
 
     # 获取分好类的所有文件名, 分类类型
     photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
@@ -145,6 +195,7 @@ def run(dataset_dir):
     print('\nFinished converting the Exp dataset!')
 
 
+# 将VGGFace2转成tf_record格式
 if __name__ == "__main__":
-    run(r"E:\DataSets\VGGFace2\VGGFace2_test_mtcnnpy_224")
-
+    # cover_to_tfrecord(r"E:\DataSets\VGGFace2\VGGFace2_test_mtcnnpy_224")
+    decode_from_tfrecord(r"E:\DataSets\VGGFace2\VGGFace2_test_mtcnnpy_224\VGGFace2_train_00000-of-00050.tfrecord")
