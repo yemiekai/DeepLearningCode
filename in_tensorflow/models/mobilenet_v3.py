@@ -8,7 +8,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import in_tensorflow as tf
+import tensorflow as tf
 
 __all__ = ['mobilenet_v3_large', 'mobilenet_v3_small']
 
@@ -296,7 +296,12 @@ def mobilenet_v3_large(inputs, classes_num, multiplier=1.0, is_training=True, re
 if __name__ == "__main__":
     print("begin ...")
     input_test = tf.zeros([1, 224, 224, 3])
-    num_classes = 1000
-    model, end_points = mobilenet_v3_large(input_test, num_classes, multiplier=1.0, is_training=True, reuse=None)
-    # model, end_points = mobilenet_v3_small(input_test, num_classes, multiplier=1.0, is_training=True, reuse=None)
+    num_classes = 512
+    # model, end_points = mobilenet_v3_large(input_test, num_classes, multiplier=1.0, is_training=True, reuse=None)
+    model, end_points = mobilenet_v3_small(input_test, num_classes, multiplier=1.0, is_training=True, reuse=None)
+    print("[")
+    for key, item in end_points.items():
+        print("{}:{}".format(key, item))
+    print("]")
+    print(model)
     print("done !")
