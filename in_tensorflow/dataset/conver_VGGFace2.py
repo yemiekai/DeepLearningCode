@@ -202,5 +202,6 @@ def cover_to_tfrecord(dataset_dir):
 
 # 将VGGFace2转成tf_record格式
 if __name__ == "__main__":
-    # cover_to_tfrecord(r"E:\DataSets\VGGFace2\VGGFace2_test_mtcnnpy_224")
-    decode_from_tfrecord(r"E:\DataSets\VGGFace2\VGGFace2_test_mtcnnpy_224\VGGFace2_train_00000-of-00050.tfrecord")
+    # cover_to_tfrecord(r"F:\DeepLearning_DataSet\VGGFace2_train_mtcnnpy_224")
+    # decode_from_tfrecord(r"E:\DataSets\VGGFace2\VGGFace2_test_mtcnnpy_224\VGGFace2_train_00000-of-00050.tfrecord")
+    pass

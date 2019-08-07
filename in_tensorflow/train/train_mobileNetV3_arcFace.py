@@ -1,17 +1,20 @@
 import tensorflow as tf
-import tensorlayer as tl
 
 import argparse
 import os
 import time
 
 from dataset.conver_VGGFace2 import *
+from models.mobilenet_v3 import *
+
 
 def get_parser():
     parser = argparse.ArgumentParser(description='parameters to train net')
     parser.add_argument('--train_datasets_dir', default=r'F:\DeepLearning_DataSet\VGGFace2_train_mtcnnpy_224_tfrecord', help='train datasets base path')
     parser.add_argument('--batch_size', default=64, help='batch size to train network')
     parser.add_argument('--buffer_size', default=12800, help='tf dataset api buffer size')
+    parser.add_argument('--num_classes', default=8631, help='classes')
+    parser.add_argument('--embedding', default=512, help='classes')
     # parser.add_argument('--net_depth', default=100, help='resnet depth, default is 50')
     # parser.add_argument('--epoch', default=100000, help='epoch to train the network')
     # parser.add_argument('--lr_steps', default=[40000, 60000, 80000], help='learning rate to train network')
@@ -20,7 +23,7 @@ def get_parser():
     # # parser.add_argument('--eval_datasets', default=['lfw', 'cfp_ff', 'cfp_fp', 'agedb_30'], help='evluation datasets')
     # parser.add_argument('--eval_datasets', default=['lfw'], help='evluation datasets')
     # parser.add_argument('--eval_db_path', default='./datasets/faces_ms1m_112x112', help='evluate datasets base path')
-    # parser.add_argument('--num_output', default=85164, help='the image size')
+    parser.add_argument('--num_classes', default=85164, help='the image size')
     # parser.add_argument('--tfrecords_file_path', default='./datasets/tfrecords', type=str,
     #                     help='path to the output of tfrecords file path')
     # parser.add_argument('--summary_path', default='./output/summary', help='the summary file save path')
@@ -65,9 +68,25 @@ if __name__ == '__main__':
     iterator = dataset.make_initializable_iterator()
     next_element = iterator.get_next()
 
+    # 2.2 prepare validate datasets
+    # ver_list = []
+    # ver_name_list = []
+    # for db in args.eval_datasets:
+    #     print('begin db %s convert.' % db)
+    #     data_set = load_bin(db, args.image_size, args)
+    #     ver_list.append(data_set)
+    #     ver_name_list.append(db)
 
+    # 3. define network, loss, optimize method, learning rate schedule, summary writer, saver
+    # 3.1 inference phase
+    w_init_method = tf.contrib.layers.xavier_initializer(uniform=False)
+    model_out, end_points = mobilenet_v3_small(images, args.embedding, multiplier=1.0, is_training=True, reuse=None)
 
+    # 3.2 get arcface loss
+    arcface_logit = arcface_loss(embedding=model_out, labels=labels, w_init=w_init_method, out_num=args.num_output)
 
+    # 3.3 define the cross entropy
+    inference_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=arcface_logit, labels=labels))
 
     # 3.10 define sess
     config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=args.log_device_mapping)
@@ -76,6 +95,9 @@ if __name__ == '__main__':
 
     # 3.13 init all variables
     sess.run(tf.global_variables_initializer())
+    sess.run(tf.local_variables_initializer())
     sess.run(iterator.initializer)
     images_train, labels_train = sess.run(next_element)
+    print(images_train.shape)
+    print(labels_train.shape)
 
