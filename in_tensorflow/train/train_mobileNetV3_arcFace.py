@@ -28,7 +28,7 @@ def get_parser():
     # parser.add_argument('--log_file_path', default='./output/logs', help='the ckpt file save path')
     # parser.add_argument('--saver_maxkeep', default=100, help='tf.train.Saver max keep ckpt files')
     # parser.add_argument('--buffer_size', default=10000, help='tf dataset api buffer size')
-    # parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
+    parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
     # parser.add_argument('--summary_interval', default=300, help='interval to save summary')
     # parser.add_argument('--ckpt_interval', default=10000, help='intervals to save ckpt file')
     # parser.add_argument('--validate_interval', default=2000, help='intervals to save ckpt file')
@@ -64,4 +64,18 @@ if __name__ == '__main__':
     dataset = dataset.batch(batch_size=args.batch_size)
     iterator = dataset.make_initializable_iterator()
     next_element = iterator.get_next()
+
+
+
+
+
+    # 3.10 define sess
+    config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=args.log_device_mapping)
+    config.gpu_options.allow_growth = True
+    sess = tf.Session(config=config)
+
+    # 3.13 init all variables
+    sess.run(tf.global_variables_initializer())
+    sess.run(iterator.initializer)
+    images_train, labels_train = sess.run(next_element)
 
