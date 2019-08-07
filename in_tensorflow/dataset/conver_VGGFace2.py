@@ -121,7 +121,7 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
     sys.stdout.flush()
 
 
-def _parse_function(serialized_example, *args, **kwargs):
+def parse_function(serialized_example, *args, **kwargs):
     features = {
         'image/encoded': tf.FixedLenFeature([], tf.string),
         'image/format': tf.FixedLenFeature([], tf.string),
@@ -132,9 +132,14 @@ def _parse_function(serialized_example, *args, **kwargs):
     parsed = tf.parse_single_example(serialized_example, features)
 
     img = parsed['image/encoded']
-    label = parsed['image/class/label']
+    img = tf.image.decode_png(img)  # 因为原来图片的格式是png
+    img = tf.cast(img, dtype=tf.float32)
+    img = tf.subtract(img, 127.5)
+    img = tf.multiply(img, 0.0078125)  # 就是除以128
 
-    # img = tf.image.decode_png(img, channels=3)
+    label = parsed['image/class/label']
+    label = tf.cast(label, dtype=tf.int64)
+
     return img, label
 
 
@@ -144,7 +149,7 @@ def decode_from_tfrecord(file_name):
     filinames = []
     filinames.append(file_name)
     dataset = tf.data.TFRecordDataset(filinames)
-    dataset = dataset.map(_parse_function)
+    dataset = dataset.map(parse_function)
     dataset = dataset.repeat()  # Repeat the input indefinitely.
     dataset = dataset.batch(32)
     iterator = dataset.make_initializable_iterator()
