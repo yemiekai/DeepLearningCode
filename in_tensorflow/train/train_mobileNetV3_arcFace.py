@@ -23,9 +23,8 @@ def get_parser():
     # parser.add_argument('--weight_deacy', default=5e-4, help='learning alg momentum')
     # parser.add_argument('--eval_datasets', default=['lfw'], help='evluation datasets')
 
-    parser.add_argument('--num_classes', default=85164, help='the image size')
     parser.add_argument('--log_file_path', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow', help='the ckpt file save path')
-    # parser.add_argument('--saver_maxkeep', default=100, help='tf.train.Saver max keep ckpt files')
+    parser.add_argument('--saver_maxkeep', default=100, help='tf.train.Saver max keep ckpt files')
     parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
     parser.add_argument('--summary_interval', default=300, help='interval to save summary')
     parser.add_argument('--ckpt_interval', default=1000, help='intervals to save ckpt file')
@@ -44,6 +43,7 @@ if __name__ == '__main__':
     save_path = os.path.join(args.log_file_path, date)  # 保存的文件夹路径
     ckpt_path = os.path.join(save_path, r'\output\ckpt')  # 保存ckpt的路径
     summary_path = os.path.join(save_path, r'\output\summary')  # 保存summary的路径
+
 
     # 1. define global parameters
     global_step = tf.Variable(name='global_step', initial_value=0, trainable=False)
@@ -77,6 +77,7 @@ if __name__ == '__main__':
     #     data_set = load_bin(db, args.image_size, args)
     #     ver_list.append(data_set)
     #     ver_name_list.append(db)
+
 
     # 3. define network, loss, optimize method, learning rate schedule, summary writer, saver
     # 3.1 inference phase
