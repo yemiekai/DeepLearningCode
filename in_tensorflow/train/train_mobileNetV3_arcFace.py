@@ -13,7 +13,7 @@ def get_parser():
     parser.add_argument('--train_datasets_dir', default=r'F:\DeepLearning_DataSet\VGGFace2_train_mtcnnpy_224_tfrecord', help='train datasets base path')
     parser.add_argument('--gpu', default=1, help='gpu nums')
     parser.add_argument('--batch_size', default=64, help='batch size to train network')
-    parser.add_argument('--buffer_size', default=128000, help='tf dataset api buffer size')
+    parser.add_argument('--buffer_size', default=12800, help='tf dataset api buffer size')
     parser.add_argument('--num_classes', default=8631, help='classes')
     parser.add_argument('--embedding', default=512, help='classes')
 
