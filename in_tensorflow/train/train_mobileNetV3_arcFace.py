@@ -6,20 +6,26 @@ import time
 
 from dataset.conver_VGGFace2 import *
 from models.mobilenet_v3 import *
+from test.verify_mobileNetV3_arcFace import *
 
 
 def get_parser():
     parser = argparse.ArgumentParser(description='parameters to train net')
     parser.add_argument('--train_datasets_dir', default=r'F:\DeepLearning_DataSet\VGGFace2_train_mtcnnpy_224_tfrecord', help='train datasets base path')
-    parser.add_argument('--gpu', default=1, help='gpu nums')
-    parser.add_argument('--batch_size', default=64, help='batch size to train network')
-    parser.add_argument('--buffer_size', default=12800, help='tf dataset api buffer size')
+    parser.add_argument('--lfw_test_list', default=r'F:\DeepLearning_DataSet\lfw_test_pair.txt')
+    parser.add_argument('--lfw_root', default=r'F:\DeepLearning_DataSet\LFW_mtcnnpy_224')
+
+    parser.add_argument('--gpus', default=2, help='gpu nums')
+    parser.add_argument('--batch_size', default=256, help='batch size to train network')
+    parser.add_argument('--eval_batch_size', default=64, help='batch size to eval network')
+    parser.add_argument('--image_size', default=(224, 224, 3))
+    parser.add_argument('--buffer_size', default=25600, help='tf dataset api buffer size')
     parser.add_argument('--num_classes', default=8631, help='classes')
     parser.add_argument('--embedding', default=512, help='classes')
 
     parser.add_argument('--epoch', default=30, help='epoch to train the network')
     parser.add_argument('--lr_boundaries', default=[10000, 20000, 40000, 80000], help='learning rate to train network')
-    parser.add_argument('--lr_values', default=[0.5, 0.1, 0.05, 0.001, 0.0001], help='learning rate to train network')
+    parser.add_argument('--lr_values', default=[0.01, 0.008, 0.005, 0.001, 0.0001], help='learning rate to train network')
     parser.add_argument('--momentum', default=0.9, help='learning alg momentum')
     # parser.add_argument('--weight_deacy', default=5e-4, help='learning alg momentum')
     # parser.add_argument('--eval_datasets', default=['lfw'], help='evluation datasets')
@@ -27,9 +33,9 @@ def get_parser():
     parser.add_argument('--log_file_path', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow', help='the ckpt file save path')
     parser.add_argument('--saver_maxkeep', default=100, help='tf.train.Saver max keep ckpt files')
     parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
-    parser.add_argument('--summary_interval', default=300, help='interval to save summary')
+    parser.add_argument('--summary_interval', default=1000, help='interval to save summary')
     parser.add_argument('--ckpt_interval', default=1000, help='intervals to save ckpt file')
-    parser.add_argument('--validate_interval', default=2000, help='intervals to save ckpt file')
+    parser.add_argument('--validate_interval', default=100, help='intervals to save eval model')
     parser.add_argument('--show_info_interval', default=50, help='intervals to save ckpt file')
     args = parser.parse_args()
     return args
@@ -74,21 +80,41 @@ def average_gradients(tower_grads):
 
 
 if __name__ == '__main__':
+    print(tf.test.gpu_device_name())
+    print(tf.test.is_gpu_available())
+
     args = get_parser()
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+    # 用于验证的图
+    eval_graph = tf.Graph()
+
 
     # 设置路径--保存训练产生的数据
     date = time.strftime("%Y-%m-%d", time.localtime())
     save_path = os.path.join(args.log_file_path, date)  # 保存的文件夹路径
-    ckpt_path = os.path.join(save_path, r'\output\ckpt')  # 保存ckpt的路径
-    summary_path = os.path.join(save_path, r'\output\summary')  # 保存summary的路径
+    ckpt_path = os.path.join(save_path, r'output\ckpt')  # 保存ckpt的路径
+    summary_path = os.path.join(save_path, r'output\summary')  # 保存summary的路径
+    os.makedirs(save_path, exist_ok=True)
+    os.makedirs(ckpt_path, exist_ok=True)
+    os.makedirs(summary_path, exist_ok=True)
 
     # 1. define global parameters
     global_step = tf.Variable(name='global_step', initial_value=0, trainable=False)
     inc_op = tf.assign_add(global_step, 1, name='increment_global_step')
-    images = tf.placeholder(name='img_inputs', shape=[None, 224, 224, 3], dtype=tf.float32)
-    labels = tf.placeholder(name='img_labels', shape=[None, ], dtype=tf.int64)
-    dropout_rate = tf.placeholder(name='dropout_rate', dtype=tf.float32)
+    images_placeholder = tf.placeholder(name='placeholder_inputs', shape=[None, 224, 224, 3], dtype=tf.float32)
+    labels_placeholder = tf.placeholder(name='placeholder_labels', shape=[None, ], dtype=tf.int64)
+    dropout_rate = tf.placeholder(name='placeholder_dropout_rate', dtype=tf.float32)
+    isTrain_placeholder = tf.placeholder(name='placeholder_isTrain', dtype=tf.bool)
+
+    # splits input to different gpu
+    images_s = tf.split(images_placeholder, num_or_size_splits=args.gpus, axis=0)
+    labels_s = tf.split(labels_placeholder, num_or_size_splits=args.gpus, axis=0)
+    # 验证集
+    identity_list = get_lfw_list(args.lfw_test_list)
+    lfw_img_paths = [os.path.join(args.lfw_root, each) for each in identity_list]  # 所有图片的路径
+
+    accuracy, threshold = lfw_test(args, lfw_img_paths, identity_list, ckpt_path, eval_graph)
 
     # 2 prepare train datasets and test datasets by using tensorflow dataset api
     # 2.1 train datasets
@@ -121,20 +147,23 @@ if __name__ == '__main__':
 
     # Calculate the gradients for each model tower.
     tower_grads = []
+    loss_dict = {}
+    loss_keys = []
     with tf.variable_scope(tf.get_variable_scope()):
-        for i in range(args.gpu):
+        for i in range(args.gpus):
             with tf.device('/gpu:%d' % i):
                 with tf.name_scope('mobileNetV3_tower_%d' % i) as scope:
                     w_init_method = tf.contrib.layers.xavier_initializer(uniform=False)
-                    model_out, end_points = mobilenet_v3_small(images, args.embedding, multiplier=1.0, is_training=True,
-                                                               reuse=None)
-                    arcface_logit = arcface_loss(embedding=model_out, labels=labels, w_init=w_init_method,
+                    model_out, end_points = mobilenet_v3_small(images_s[i], args.embedding, multiplier=1.0,
+                                                               is_training=isTrain_placeholder, reuse=None)
+                    arcface_logit = arcface_loss(embedding=model_out, labels=labels_s[i], w_init=w_init_method,
                                                  out_num=args.num_classes)
-                    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=arcface_logit, labels=labels,
+                    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=arcface_logit,
+                                                                                   labels=labels_s[i],
                                                                                    name='cross_entropy_per_example')
-                    cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+                    inference_loss = tf.reduce_mean(cross_entropy, name='cross_entropy')
 
-                    tf.add_to_collection('losses', cross_entropy_mean)
+                    tf.add_to_collection('losses', inference_loss)
 
                     losses = tf.get_collection('losses', scope)
                     total_loss = tf.add_n(losses, name='total_loss')
@@ -150,6 +179,11 @@ if __name__ == '__main__':
 
                     # Keep track of the gradients across all towers.
                     tower_grads.append(grads)
+
+                    loss_dict[('inference_loss_%s_%d' % ('gpu', i))] = inference_loss
+                    loss_keys.append(('inference_loss_%s_%d' % ('gpu', i)))
+                    loss_dict[('total_loss_%s_%d' % ('gpu', i))] = total_loss
+                    loss_keys.append(('total_loss_%s_%d' % ('gpu', i)))
 
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
@@ -179,17 +213,12 @@ if __name__ == '__main__':
     summaries.append(tf.summary.scalar('leraning_rate', lr))
     summary_op = tf.summary.merge(summaries)
     # 3.12 saver
-    saver = tf.train.Saver(max_to_keep=args.saver_maxkeep)
+    saver = tf.train.Saver(tf.global_variables(), max_to_keep=args.saver_maxkeep)
     # 3.13 init all variables
     sess.run(tf.global_variables_initializer())
     sess.run(tf.local_variables_initializer())
     sess.run(iterator.initializer)
 
-    # 4 begin iteration
-    if not os.path.exists(args.log_file_path):
-        os.makedirs(args.log_file_path)
-    log_file_path = args.log_file_path + '/train' + time.strftime('_%Y-%m-%d-%H-%M', time.localtime(time.time())) + '.log'
-    log_file = open(log_file_path, 'w')
     # 4 begin iteration
     count = 0
     total_accuracy = {}
@@ -199,39 +228,45 @@ if __name__ == '__main__':
         while True:
             try:
                 images_train, labels_train = sess.run(next_element)
-                feed_dict = {images: images_train, labels: labels_train, dropout_rate: 0.4}
+                feed_dict = {images_placeholder: images_train,
+                             labels_placeholder: labels_train,
+                             isTrain_placeholder: True,
+                             dropout_rate: 0.4}
 
                 start = time.time()
-                _, _ = sess.run([train_op, inc_op], feed_dict=feed_dict)
+                _, _, inference_loss_gpu_1, total_loss_gpu_1, inference_loss_gpu_2, total_loss_gpu_2, _lr = sess.run(
+                    [train_op, inc_op, loss_dict[loss_keys[0]], loss_dict[loss_keys[1]], loss_dict[loss_keys[2]],
+                     loss_dict[loss_keys[3]], lr], feed_dict=feed_dict)
+
                 end = time.time()
                 pre_sec = args.batch_size/(end - start)
 
                 # print training information
                 if count > 0 and count % args.show_info_interval == 0:
-                    print('epoch %d, total_step %d, time %.3f samples/sec' %
-                          (i, count, pre_sec))
+                    print('epoch %d, total_step %d, lr: %.5f, total loss: [%.2f, %.2f], inference loss: [%.2f, %.2f], time %.3f samples/sec' %
+                          (i, count, _lr, total_loss_gpu_1, total_loss_gpu_2, inference_loss_gpu_1, inference_loss_gpu_2, pre_sec))
                 count += 1
 
                 # save summary
                 if count > 0 and count % args.summary_interval == 0:
-                    feed_dict = {images: images_train, labels: labels_train, dropout_rate: 0.4}
+                    print('count = %d, save summary' % count)
+                    feed_dict = {images_placeholder: images_train, labels_placeholder: labels_train, isTrain_placeholder:True, dropout_rate: 0.4}
                     summary_op_val = sess.run(summary_op, feed_dict=feed_dict)
                     summary.add_summary(summary_op_val, count)
 
                 # save ckpt files
                 if count > 0 and count % args.ckpt_interval == 0:
+                    print('count = %d, save ckpt' % count)
                     filename = 'InsightFace_iter_{:d}'.format(count) + '.ckpt'
                     filename = os.path.join(ckpt_path, filename)
                     saver.save(sess, filename)
 
                 # validate
                 if count > 0 and count % args.validate_interval == 0:
-                    feed_dict_test = {dropout_rate: 1.0}
+                    print('count = %d, validate' % count)
+                    accuracy, threshold = lfw_test(args, lfw_img_paths, identity_list, ckpt_path, eval_graph)
 
             except tf.errors.OutOfRangeError:
                 print("End of epoch %d" % i)
                 break
-
-    log_file.close()
-    log_file.write('\n')
 
