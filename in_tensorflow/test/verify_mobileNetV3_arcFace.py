@@ -28,16 +28,16 @@ def get_lfw_list(pair_list):
     return data_list
 
 
-def load_model(model, input_map=None):
+def load_model(model):
     # Check if the model is a model directory (containing a metagraph and a checkpoint file)
     #  or if it is a protobuf file with a frozen graph
     model_exp = os.path.expanduser(model)
     if (os.path.isfile(model_exp)):
         print('Model filename: %s' % model_exp)
-        with gfile.FastGFile(model_exp, 'rb') as f:
+        with tf.gfile.FastGFile(model_exp, 'rb') as f:
             graph_def = tf.GraphDef()
             graph_def.ParseFromString(f.read())
-            tf.import_graph_def(graph_def, input_map=input_map, name='')
+            tf.import_graph_def(graph_def)
     else:
         print('Model directory: %s' % model_exp)
         meta_file, ckpt_file = get_model_filenames(model_exp)
@@ -45,7 +45,7 @@ def load_model(model, input_map=None):
         print('Metagraph file: %s' % meta_file)
         print('Checkpoint file: %s' % ckpt_file)
 
-        saver = tf.train.import_meta_graph(os.path.join(model_exp, meta_file), input_map=input_map)
+        saver = tf.train.import_meta_graph(os.path.join(model_exp, meta_file))
         saver.restore(tf.get_default_session(), os.path.join(model_exp, ckpt_file))
 
 
@@ -54,9 +54,9 @@ def get_model_filenames(model_dir):
     meta_files = [s for s in files if s.endswith('.meta')]
     if len(meta_files) == 0:
         raise ValueError('No meta file found in the model directory (%s)' % model_dir)
-    # elif len(meta_files) > 1:
-    #     raise ValueError('There should not be more than one meta file in the model directory (%s)' % model_dir)
-    meta_file = meta_files[-1]
+    elif len(meta_files) > 1:
+        raise ValueError('There should not be more than one meta file in the model directory (%s)' % model_dir)
+    meta_file = meta_files[0]
     ckpt = tf.train.get_checkpoint_state(model_dir)
     if ckpt and ckpt.model_checkpoint_path:
         ckpt_file = os.path.basename(ckpt.model_checkpoint_path)
@@ -179,54 +179,58 @@ def load_image(img_path, input_shape=(224, 224, 3)):
     return image
 
 
-def get_featurs(args, test_list, batch_size, input_shape, ckpt_path, graph):
+def get_featurs(args, test_list, batch_size, input_shape, ckpt_path):
     images = None
     features = None
     cnt = 0
+    with tf.Graph().as_default() as g:
+        with tf.Session() as sess:
+            # images_placeholder = tf.placeholder(name='placeholder_inputs', shape=[None, 224, 224, 3], dtype=tf.float32)
+            # isTrain_placeholder = tf.placeholder(name='placeholder_isTrain', dtype=tf.bool)
 
-    images_placeholder = tf.placeholder(name='placeholder_inputs', shape=[None, 224, 224, 3], dtype=tf.float32)
-    isTrain_placeholder = tf.placeholder(name='placeholder_isTrain', dtype=tf.bool)
+            # model_out, end_points = mobilenet_v3_small(images_placeholder, args.embedding, multiplier=1.0,
+            #                                        is_training=isTrain_placeholder, reuse=None)
 
+            # embedding_tensor = model_out.outputs
+            # Load the model
 
-    with tf.Session() as sess:
-        model_out, end_points = mobilenet_v3_small(images_placeholder, args.embedding, multiplier=1.0,
-                                                   is_training=isTrain_placeholder, reuse=None)
-        # Load the model
-        load_model(ckpt_path)
+            # sess.run(tf.global_variables_initializer())
+            # sess.run(tf.local_variables_initializer())
+            load_model(ckpt_path)
 
-        out = graph.get_tensor_by_name("Logits_out/output:0")
-        images_placeholder = graph.get_tensor_by_name("placeholder_inputs_1:0")
+            _in = g.get_tensor_by_name("input:0")
+            _out = g.get_tensor_by_name("embeddings:0")
+            _train = g.get_tensor_by_name("placeholder_isTrain:0")
 
-        for i, img_path in enumerate(test_list):
-            image = load_image(img_path, input_shape)
-            if image is None:
-                print('read {} error'.format(img_path))
+            for i, img_path in enumerate(test_list):
+                image = load_image(img_path, input_shape)
+                if image is None:
+                    print('read {} error'.format(img_path))
 
-            if images is None:
-                images = image
-            else:
-                images = np.concatenate((images, image), axis=0)  # 拼接数据, 凑够一个批
-
-            if images.shape[0] % batch_size == 0 or i == len(test_list) - 1:
-                cnt += 1
-
-                output = sess.run(model_out, feed_dict={images_placeholder: images, isTrain_placeholder:False})
-
-                if features is None:
-                    features = output
+                if images is None:
+                    images = image
                 else:
-                    features = np.concatenate((features, output), axis=0)
+                    images = np.concatenate((images, image), axis=0)  # 拼接数据, 凑够一个批
 
-                images = None
+                if images.shape[0] % batch_size == 0 or i == len(test_list) - 1:
+                    cnt += 1
+
+                    output = sess.run(_out, feed_dict={_in: images, _train: False})
+
+                    if features is None:
+                        features = output
+                    else:
+                        features = np.concatenate((features, output), axis=0)
+
+                    images = None
 
     return features, cnt
 
 
-def lfw_test(args, img_paths, identity_list, ckpt_path, graph=None):
-    if graph is None:
-        graph = tf.Graph()
+def lfw_test(args, img_paths, identity_list, ckpt_path):
+
     s = time.time()
-    features, cnt = get_featurs(args, img_paths, args.eval_batch_size, args.image_size, ckpt_path, graph)
+    features, cnt = get_featurs(args, img_paths, args.eval_batch_size, args.image_size, ckpt_path)
     print("features.shape:{}  LFW list length:{}  embedding size:{}".format(features.shape, len(img_paths), args.embedding))
     t = time.time() - s
     print('total time is {}, average time is {}'.format(t, t / cnt))
@@ -236,4 +240,21 @@ def lfw_test(args, img_paths, identity_list, ckpt_path, graph=None):
     return accuracy, threshold
 
 
+if __name__ == '__main__':
+    class Argument:
+        def __init__(self):
+            self.eval_batch_size = 32
+            self.image_size = (224, 224, 3)
+            self.embedding = 512
+            self.lfw_test_list = r'F:\DeepLearning_DataSet\lfw_test_pair.txt'
+            self.lfw_root = r'F:\DeepLearning_DataSet\LFW_mtcnnpy_224'
+            self.ckpt_path = r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-12\output\ckpt'
+
+    args = Argument()
+
+    # 验证集
+    identity_list = get_lfw_list(args.lfw_test_list)
+    lfw_img_paths = [os.path.join(args.lfw_root, each) for each in identity_list]  # 所有图片的路径
+
+    accuracy, threshold = lfw_test(args, lfw_img_paths, identity_list, args.ckpt_path)
 
