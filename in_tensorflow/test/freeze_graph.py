@@ -74,50 +74,35 @@ def main(args):
             tf.get_default_session().run(tf.global_variables_initializer())
             tf.get_default_session().run(tf.local_variables_initializer())
             saver.restore(tf.get_default_session(), os.path.join(model_dir_exp, ckpt_file))
-            
-            # Retrieve the protobuf graph definition and fix the batch norm nodes
-            input_graph_def = sess.graph.as_graph_def()
-            
-            # Freeze the graph def
-            output_graph_def = freeze_graph_def(sess, input_graph_def, 'embeddings')
+
+            graph = tf.get_default_graph()
+            input_graph_def = graph.as_graph_def()
+
+            whitelist_names = []
+            for node in input_graph_def.node:
+                if (node.name.startswith('input') or node.name.startswith('embeddings')):
+                    print(node.name)
+                    whitelist_names.append(node.name)
+
+            output_graph_def = graph_util.convert_variables_to_constants(
+                sess,
+                input_graph_def,
+                ['embeddings'],
+                # whitelist_names
+            )
 
         # Serialize and dump the output graph to the filesystem
         with tf.gfile.GFile(args.output_file, 'wb') as f:
             f.write(output_graph_def.SerializeToString())
         print("%d ops in the final graph: %s" % (len(output_graph_def.node), args.output_file))
-        
-def freeze_graph_def(sess, input_graph_def, output_node_names):
-    for node in input_graph_def.node:
-        if node.op == 'RefSwitch':
-            node.op = 'Switch'
-            for index in xrange(len(node.input)):
-                if 'moving_' in node.input[index]:
-                    node.input[index] = node.input[index] + '/read'
-        elif node.op == 'AssignSub':
-            node.op = 'Sub'
-            if 'use_locking' in node.attr: del node.attr['use_locking']
-        elif node.op == 'AssignAdd':
-            node.op = 'Add'
-            if 'use_locking' in node.attr: del node.attr['use_locking']
-    
-    # Get the list of important nodes
-    whitelist_names = []
-    for node in input_graph_def.node:
-        if (node.name.startswith('MobileFaceNet') or node.name.startswith('embeddings')):
-            whitelist_names.append(node.name)
 
-    # Replace all the variables in the graph with constants of the same values
-    output_graph_def = graph_util.convert_variables_to_constants(
-        sess, input_graph_def, output_node_names.split(","),
-        variable_names_whitelist=whitelist_names)
-    return output_graph_def
   
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
     
     parser.add_argument('--model_dir', type=str,
         help='Directory containing the metagraph (.meta) file and the checkpoint (ckpt) file containing model parameters',
-                        default=r"E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-12\output\ckpt")
+                        default=r"\\YEMIEKAI_PC\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-12\output\ckpt")
 
     parser.add_argument('--output_file', type=str,
                         help='Filename for the exported graphdef protobuf (.pb)',

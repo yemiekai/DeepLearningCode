@@ -196,10 +196,11 @@ def get_featurs(args, test_list, batch_size, input_shape, ckpt_path):
             # sess.run(tf.global_variables_initializer())
             # sess.run(tf.local_variables_initializer())
             load_model(ckpt_path)
-
-            _in = g.get_tensor_by_name("input:0")
-            _out = g.get_tensor_by_name("embeddings:0")
-            _train = g.get_tensor_by_name("placeholder_isTrain:0")
+            for op in sess.graph.get_operations():
+                print(op.name)
+            _in = sess.graph.get_tensor_by_name("import/input:0")
+            _out = g.get_tensor_by_name("import/embeddings:0")
+            _train = g.get_tensor_by_name("import/placeholder_isTrain:0")
 
             for i, img_path in enumerate(test_list):
                 image = load_image(img_path, input_shape)
@@ -245,9 +246,9 @@ if __name__ == '__main__':
             self.eval_batch_size = 32
             self.image_size = (224, 224, 3)
             self.embedding = 512
-            self.lfw_test_list = r'F:\DeepLearning_DataSet\lfw_test_pair.txt'
-            self.lfw_root = r'F:\DeepLearning_DataSet\LFW_mtcnnpy_224'
-            self.ckpt_path = r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-12\output\ckpt'
+            self.lfw_test_list = r'E:\DataSets\LFW\lfw_test_pair.txt'
+            self.lfw_root = r'E:\DataSets\LFW\LFW_mtcnnpy_224'
+            self.ckpt_path = r'C:\Users\Administrator\Desktop\ckpt\1234566.pb'
 
     args = Argument()
 
