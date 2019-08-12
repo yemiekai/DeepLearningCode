@@ -224,6 +224,9 @@ def mobilenet_v3_small(inputs, classes_num, multiplier=1.0, is_training=True, re
         [96, 96, 5, 1, "HS", True, 576],
     ]
 
+    # 给输入张量命名(加载ckpt时要用到)
+    inputs = tf.identity(inputs, name='inputs')
+
     input_size = inputs.get_shape().as_list()[1:-1]
     assert ((input_size[0] % 32 == 0) and (input_size[1] % 32 == 0))
 

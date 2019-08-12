@@ -82,38 +82,36 @@ def average_gradients(tower_grads):
 if __name__ == '__main__':
 
     with tf.Graph().as_default():
-        print(tf.test.gpu_device_name())
-        print(tf.test.is_gpu_available())
+        # 查看GPU设备
+        # print(tf.test.gpu_device_name())
+        # print(tf.test.is_gpu_available())
+        # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
         args = get_parser()
-        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-
-        # 设置路径--保存训练产生的数据
+        # 设置路径: 保存训练产生的数据
         date = time.strftime("%Y-%m-%d", time.localtime())
         save_path = os.path.join(args.log_file_path, date)  # 保存的文件夹路径
-        ckpt_path = os.path.join(save_path, r'output\ckpt')  # 保存ckpt的路径
-        summary_path = os.path.join(save_path, r'output\summary')  # 保存summary的路径
+        ckpt_path = os.path.join(save_path, 'ckpt')  # 保存ckpt的路径
+        summary_path = os.path.join(save_path, 'summary')  # 保存summary的路径
         os.makedirs(save_path, exist_ok=True)
         os.makedirs(ckpt_path, exist_ok=True)
         os.makedirs(summary_path, exist_ok=True)
 
-        # 1. define global parameters
+        # 设置参数(从ckpt恢复计算图和参数时, 要用到这个name)
         global_step = tf.Variable(name='global_step', initial_value=0, trainable=False)
         inc_op = tf.assign_add(global_step, 1, name='increment_global_step')
         images_placeholder = tf.placeholder(name='placeholder_inputs', shape=[None, 224, 224, 3], dtype=tf.float32)
+        verify_placeholder = tf.placeholder(name='placeholder_verify', shape=[None, 224, 224, 3], dtype=tf.float32)  # 验证模型时的输入
         labels_placeholder = tf.placeholder(name='placeholder_labels', shape=[None, ], dtype=tf.int64)
         isTrain_placeholder = tf.placeholder(name='placeholder_isTrain', dtype=tf.bool)
 
-        images_placeholder = tf.identity(images_placeholder, 'input')
-
         # 验证集
-        identity_list = get_lfw_list(args.lfw_test_list)
+        identity_list = get_lfw_list(args.lfw_test_list)  # 所有人名
         lfw_img_paths = [os.path.join(args.lfw_root, each) for each in identity_list]  # 所有图片的路径
+        lfw_images_list = read_all(lfw_img_paths, args.image_size)  # 所有图像(numpy数组)
 
-        # accuracy, threshold = lfw_test(args, lfw_img_paths, identity_list, r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-12\output\ckpt')
-
-        # 数据集
+        # 训练集(先要把原图转成tfrecord, 见dataset/conver_VGGFace2)
         tfrecord_files = []
         for record_file in os.listdir(args.train_datasets_dir):  # dataset_dir所有文件名
             path = os.path.join(args.train_datasets_dir, record_file)
@@ -127,16 +125,27 @@ if __name__ == '__main__':
         iterator = dataset.make_initializable_iterator()
         next_element = iterator.get_next()
 
+
         # 学习率
         lr = tf.train.piecewise_constant(global_step, boundaries=args.lr_boundaries, values=args.lr_values, name='lr_schedule')
         opt = tf.train.MomentumOptimizer(learning_rate=lr, momentum=args.momentum)
 
         w_init_method = tf.contrib.layers.xavier_initializer(uniform=False)
-        model_out, end_points = mobilenet_v3_small(images_placeholder, args.embedding, multiplier=1.0,
-                                                   is_training=isTrain_placeholder, reuse=None)
+        model_out, end_points = mobilenet_v3_small(inputs=images_placeholder,
+                                                   classes_num=args.embedding,
+                                                   multiplier=1.0,
+                                                   is_training=isTrain_placeholder,
+                                                   reuse=None)
+        model_out_verify = mobilenet_v3_small(inputs=images_placeholder,
+                                              classes_num=args.embedding,
+                                              multiplier=1.0,
+                                              is_training=isTrain_placeholder,
+                                              reuse=True)
         model_out = tf.identity(model_out, 'embeddings')
 
-        arcface_logit = arcface_loss(embedding=model_out, labels=labels_placeholder, w_init=w_init_method,
+        arcface_logit = arcface_loss(embedding=model_out,
+                                     labels=labels_placeholder,
+                                     w_init=w_init_method,
                                      out_num=args.num_classes)
         cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=arcface_logit,
                                                                        labels=labels_placeholder,
@@ -147,48 +156,40 @@ if __name__ == '__main__':
         # losses = tf.get_collection('losses')
         # total_loss = tf.add_n(losses, name='total_loss')
 
-        # Retain the summaries from the final tower.
         summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-
-        # Calculate the gradients for the batch of data on this CIFAR tower.
         grads = opt.compute_gradients(inference_loss)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        # Apply the gradients to adjust the shared variables.
         with tf.control_dependencies(update_ops):
             train_op = opt.apply_gradients(grads, global_step=global_step)
 
-        # 3.10 define sess
         config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=args.log_device_mapping)
         config.gpu_options.allow_growth = True
         sess = tf.Session(config=config)
 
-        # 3.11 summary writer
+        # summary writer
         summary = tf.summary.FileWriter(summary_path, sess.graph)
         summaries = []
 
-        # # 3.11.1 add grad histogram op
+        # add grad histogram op
         for grad, var in grads:
             if grad is not None:
                 summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
-        # 3.11.2 add trainabel variable gradients
+        # add trainabel variable gradients
         for var in tf.trainable_variables():
             summaries.append(tf.summary.histogram(var.op.name, var))
-        # 3.11.4 add learning rate
+        # add learning rate
         summaries.append(tf.summary.scalar('leraning_rate', lr))
         summary_op = tf.summary.merge(summaries)
-        # 3.12 saver
 
-        # 3.13 init all variables
+        # 初始化变量
         sess.run(tf.global_variables_initializer(), feed_dict={isTrain_placeholder: False})
         sess.run(tf.local_variables_initializer(), feed_dict={isTrain_placeholder: False})
         sess.run(iterator.initializer)
+        saver = tf.train.Saver()
 
         # 4 begin iteration
         count = 0
-        total_accuracy = {}
-
-        saver = tf.train.Saver()
 
         for i in range(args.epoch):
             sess.run(iterator.initializer)
@@ -200,17 +201,16 @@ if __name__ == '__main__':
                                  isTrain_placeholder: True}
 
                     start = time.time()
-                    _, _, _inference_loss, _lr = sess.run(
-                        [train_op, inc_op, inference_loss, lr], feed_dict=feed_dict)
-
+                    _, _, _inference_loss, _lr = sess.run([train_op, inc_op, inference_loss, lr], feed_dict=feed_dict)
+                    count += 1
                     end = time.time()
+
                     pre_sec = args.batch_size/(end - start)
 
-                    # print training information
+                    # 打印训练情况
                     if count > 0 and count % args.show_info_interval == 0:
                         print('epoch %d, total_step %d, lr: %.5f, inference loss: %.2f, time %.3f samples/sec' %
                               (i, count, _lr, _inference_loss, pre_sec))
-                    count += 1
 
                     # save summary
                     if count > 0 and count % args.summary_interval == 0:
@@ -219,17 +219,17 @@ if __name__ == '__main__':
                         summary_op_val = sess.run(summary_op, feed_dict=feed_dict)
                         summary.add_summary(summary_op_val, count)
 
-                    # save ckpt files
+                    # 保存模型(ckpt)
                     if count > 0 and count % args.ckpt_interval == 0:
                         print('count = %d, save ckpt' % count)
                         filename = 'InsightFace_iter_{:d}'.format(count) + '.ckpt'
                         filename = os.path.join(ckpt_path, filename)
                         saver.save(sess, filename)
 
-                    # validate
+                    # 验证
                     if count > 0 and count % args.validate_interval == 0:
-                        print('count = %d, validate' % count)
-                        # accuracy, threshold = lfw_test(args, lfw_img_paths, identity_list, ckpt_path, eval_graph)
+                        test_on_lfw_when_traing(sess, lfw_images_list, identity_list, args.batch_size, model_out_verify,
+                                                verify_placeholder, isTrain_placeholder)
 
                 except tf.errors.OutOfRangeError:
                     print("End of epoch %d" % i)

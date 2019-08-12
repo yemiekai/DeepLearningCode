@@ -59,6 +59,7 @@ def get_model_filenames(model_dir):
                 ckpt_file = step_str.groups()[0]
     return meta_file, ckpt_file
 
+
 def main(args):
     with tf.Graph().as_default():
         with tf.Session() as sess:
@@ -78,18 +79,8 @@ def main(args):
             graph = tf.get_default_graph()
             input_graph_def = graph.as_graph_def()
 
-            whitelist_names = []
-            for node in input_graph_def.node:
-                if (node.name.startswith('input') or node.name.startswith('embeddings')):
-                    print(node.name)
-                    whitelist_names.append(node.name)
-
-            output_graph_def = graph_util.convert_variables_to_constants(
-                sess,
-                input_graph_def,
-                ['embeddings'],
-                # whitelist_names
-            )
+            # 暂时没有设置黑白名单
+            output_graph_def = graph_util.convert_variables_to_constants(sess, input_graph_def)
 
         # Serialize and dump the output graph to the filesystem
         with tf.gfile.GFile(args.output_file, 'wb') as f:
@@ -101,13 +92,14 @@ def parse_arguments(argv):
     parser = argparse.ArgumentParser()
     
     parser.add_argument('--model_dir', type=str,
-        help='Directory containing the metagraph (.meta) file and the checkpoint (ckpt) file containing model parameters',
+                        help='Directory containing the metagraph (.meta) file and the checkpoint (ckpt) file containing model parameters',
                         default=r"\\YEMIEKAI_PC\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-12\output\ckpt")
 
     parser.add_argument('--output_file', type=str,
                         help='Filename for the exported graphdef protobuf (.pb)',
                         default=r"1234566.pb")
     return parser.parse_args(argv)
+
 
 if __name__ == '__main__':
     main(parse_arguments(sys.argv[1:]))

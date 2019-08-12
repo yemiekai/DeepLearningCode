@@ -5,6 +5,7 @@ from models.mobilenet_v3 import *
 import numpy as np
 import time
 import math
+import sys
 
 from tensorflow.python.platform import gfile
 import re
@@ -172,10 +173,30 @@ def load_image(img_path, input_shape=(224, 224, 3)):
     image = image.astype(np.float32, copy=False)
 
     # 正则化
-    image = normalizing(image/255.0)
-    # image -= 127.5
-    # image /= 127.5
+    # image = normalizing(image/255.0)
+    image -= 127.5
+    image *= 0.0078125
     return image
+
+
+# 一次把所有图片都读到数组里(需要占用很多内存)
+def read_all(img_paths, input_shape):
+    print('read LFW, total: %d' % len(img_paths))
+    images = None
+    for i, img_path in enumerate(img_paths):
+        sys.stdout.write('\r>> reading LFW: No.[%5d]: %s ' % (i, img_path.split('/')[-1]))
+        sys.stdout.flush()
+        image = load_image(img_path, input_shape)
+        if image is None:
+            print('read {} error'.format(img_path))
+
+        if images is None:
+            images = image
+        else:
+            images = np.concatenate((images, image), axis=0)
+
+    print("read LFW done.")
+    return images
 
 
 def get_featurs(args, test_list, batch_size, input_shape, ckpt_path):
@@ -238,6 +259,30 @@ def lfw_test(args, img_paths, identity_list, ckpt_path):
     accuracy, threshold = test_performance(fe_dict, args.lfw_test_list)
     print('lfw face verification accuracy: ', accuracy, 'threshold: ', threshold)
     return accuracy, threshold
+
+
+def test_on_lfw_when_traing(sess, datas, identity_list, batch_size, model_out_verify, verify_placeholder, isTrain_placeholder):
+    print('testing verification..')
+    data_nums = len(datas)
+    index = 0
+
+    features = None
+
+    # 分批将data输入模型, 得到embeddings
+    while index < data_nums:
+        batch_data = datas[index:min(index + batch_size, data_nums)]
+        model_out = sess.run(model_out_verify, feed_dict={verify_placeholder: batch_data,
+                                                          isTrain_placeholder: False})
+        index += batch_size
+
+        if features is None:
+            features = model_out
+        else:
+            features = np.concatenate((features, model_out), axis=0)
+
+    fe_dict = get_feature_dict(identity_list, features)
+    accuracy, threshold = test_performance(fe_dict, args.lfw_test_list)
+    print('lfw face verification accuracy: ', accuracy, 'threshold: ', threshold)
 
 
 if __name__ == '__main__':
