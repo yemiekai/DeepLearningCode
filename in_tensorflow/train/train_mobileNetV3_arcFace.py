@@ -86,7 +86,7 @@ if __name__ == '__main__':
         print(tf.test.is_gpu_available())
 
         args = get_parser()
-        # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
         # 设置路径--保存训练产生的数据
@@ -131,28 +131,27 @@ if __name__ == '__main__':
         lr = tf.train.piecewise_constant(global_step, boundaries=args.lr_boundaries, values=args.lr_values, name='lr_schedule')
         opt = tf.train.MomentumOptimizer(learning_rate=lr, momentum=args.momentum)
 
-        with tf.device('/gpu:0'):
-            w_init_method = tf.contrib.layers.xavier_initializer(uniform=False)
-            model_out, end_points = mobilenet_v3_small(images_placeholder, args.embedding, multiplier=1.0,
-                                                       is_training=isTrain_placeholder, reuse=None)
-            model_out = tf.identity(model_out, 'embeddings')
+        w_init_method = tf.contrib.layers.xavier_initializer(uniform=False)
+        model_out, end_points = mobilenet_v3_small(images_placeholder, args.embedding, multiplier=1.0,
+                                                   is_training=isTrain_placeholder, reuse=None)
+        model_out = tf.identity(model_out, 'embeddings')
 
-            arcface_logit = arcface_loss(embedding=model_out, labels=labels_placeholder, w_init=w_init_method,
-                                         out_num=args.num_classes)
-            cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=arcface_logit,
-                                                                           labels=labels_placeholder,
-                                                                           name='cross_entropy_per_example')
-            inference_loss = tf.reduce_mean(cross_entropy, name='cross_entropy')
+        arcface_logit = arcface_loss(embedding=model_out, labels=labels_placeholder, w_init=w_init_method,
+                                     out_num=args.num_classes)
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=arcface_logit,
+                                                                       labels=labels_placeholder,
+                                                                       name='cross_entropy_per_example')
+        inference_loss = tf.reduce_mean(cross_entropy, name='cross_entropy')
 
-            # tf.add_to_collection('losses', inference_loss)
-            # losses = tf.get_collection('losses')
-            # total_loss = tf.add_n(losses, name='total_loss')
+        # tf.add_to_collection('losses', inference_loss)
+        # losses = tf.get_collection('losses')
+        # total_loss = tf.add_n(losses, name='total_loss')
 
-            # Retain the summaries from the final tower.
-            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
+        # Retain the summaries from the final tower.
+        summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
 
-            # Calculate the gradients for the batch of data on this CIFAR tower.
-            grads = opt.compute_gradients(inference_loss)
+        # Calculate the gradients for the batch of data on this CIFAR tower.
+        grads = opt.compute_gradients(inference_loss)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         # Apply the gradients to adjust the shared variables.

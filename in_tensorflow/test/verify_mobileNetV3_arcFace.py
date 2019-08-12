@@ -9,7 +9,6 @@ import math
 from tensorflow.python.platform import gfile
 import re
 
-from torch.nn import DataParallel
 import matplotlib.pyplot as plt
 
 
