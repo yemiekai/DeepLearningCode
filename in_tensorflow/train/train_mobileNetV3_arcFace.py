@@ -33,7 +33,7 @@ def get_parser():
     parser.add_argument('--log_file_path', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow', help='the ckpt file save path')
     parser.add_argument('--saver_maxkeep', default=100, help='tf.train.Saver max keep ckpt files')
     parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
-    parser.add_argument('--summary_interval', default=1000, help='interval to save summary')
+    parser.add_argument('--summary_interval', default=2000, help='interval to save summary')
     parser.add_argument('--ckpt_interval', default=100, help='intervals to save ckpt file')
     parser.add_argument('--validate_interval', default=100, help='intervals to save eval model')
     parser.add_argument('--show_info_interval', default=50, help='intervals to save ckpt file')
@@ -136,7 +136,7 @@ if __name__ == '__main__':
                                                    multiplier=1.0,
                                                    is_training=isTrain_placeholder,
                                                    reuse=None)
-        model_out_verify = mobilenet_v3_small(inputs=images_placeholder,
+        model_out_verify = mobilenet_v3_small(inputs=verify_placeholder,
                                               classes_num=args.embedding,
                                               multiplier=1.0,
                                               is_training=isTrain_placeholder,

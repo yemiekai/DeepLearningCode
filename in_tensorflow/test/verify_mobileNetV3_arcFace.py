@@ -182,7 +182,7 @@ def load_image(img_path, input_shape=(224, 224, 3)):
 # 一次把所有图片都读到数组里(需要占用很多内存)
 def read_all(img_paths, input_shape):
     print('read LFW, total: %d' % len(img_paths))
-    images = None
+    images = []
     for i, img_path in enumerate(img_paths):
         sys.stdout.write('\r>> reading LFW: No.[%5d]: %s ' % (i, img_path.split('/')[-1]))
         sys.stdout.flush()
@@ -190,10 +190,7 @@ def read_all(img_paths, input_shape):
         if image is None:
             print('read {} error'.format(img_path))
 
-        if images is None:
-            images = image
-        else:
-            images = np.concatenate((images, image), axis=0)
+        images.append(image[0])
 
     print("read LFW done.")
     return images
