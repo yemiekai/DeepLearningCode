@@ -294,7 +294,41 @@ if __name__ == '__main__':
     # 验证集
     identity_list = get_lfw_list(args.lfw_test_list)
     lfw_img_paths = [os.path.join(args.lfw_root, each) for each in identity_list]  # 所有图片的路径
+    lfw_imgs = read_all(lfw_img_paths, args.image_size)
 
     # 从ckpt恢复模型并验证
-    accuracy, threshold = lfw_test(args, lfw_img_paths, identity_list, args.ckpt_path)
+    data_nums = len(lfw_imgs)
+    index = 0
+    features = []
+    with tf.Graph().as_default() as g:
+        with tf.Session() as sess:
+
+            load_model(args.ckpt_path)
+            for op in sess.graph.get_operations():  # 看看都有哪些变量, 找到变量才能跑
+                if 'input' in op.name or 'output' in op.name:
+                    print(op.name)
+
+            _in = sess.graph.get_tensor_by_name("import/input:0")
+            _out = g.get_tensor_by_name("import/embeddings:0")
+            _train = g.get_tensor_by_name("import/placeholder_isTrain:0")
+
+            # 分批将data输入模型, 得到embeddings
+            while index < data_nums:
+                start = index
+                end = min(index + args.eval_batch_size, data_nums)
+                sys.stdout.write('\r>>verify in LFW, getting embeddings: [%d]' % end)
+                sys.stdout.flush()
+                batch_datas = lfw_imgs[start:end]
+
+                # 输入网络, 得到embeddings
+                model_out = sess.run(_out, feed_dict={_in: batch_datas, _train: False})
+
+                for feature in model_out:
+                    features.append(feature)
+
+                index += args.eval_batch_size
+
+            fe_dict = get_feature_dict(identity_list, features)
+            accuracy, threshold = test_performance(fe_dict, args.lfw_test_list)
+            print('\r\nlfw face verification accuracy: ', accuracy, 'threshold: ', threshold)
 
