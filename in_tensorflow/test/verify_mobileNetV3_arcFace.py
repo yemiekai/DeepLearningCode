@@ -6,11 +6,8 @@ import numpy as np
 import time
 import math
 import sys
-
-from tensorflow.python.platform import gfile
 import re
 
-import matplotlib.pyplot as plt
 
 
 def get_lfw_list(pair_list):
@@ -181,6 +178,9 @@ def load_image(img_path, input_shape=(224, 224, 3)):
 
 # 一次把所有图片都读到数组里(需要占用很多内存)
 def read_all(img_paths, input_shape):
+    """
+    用numpy.concatenate太慢了, 所以这里用list的append
+    """
     print('read LFW, total: %d' % len(img_paths))
     images = []
     for i, img_path in enumerate(img_paths):
@@ -202,19 +202,9 @@ def get_featurs(args, test_list, batch_size, input_shape, ckpt_path):
     cnt = 0
     with tf.Graph().as_default() as g:
         with tf.Session() as sess:
-            # images_placeholder = tf.placeholder(name='placeholder_inputs', shape=[None, 224, 224, 3], dtype=tf.float32)
-            # isTrain_placeholder = tf.placeholder(name='placeholder_isTrain', dtype=tf.bool)
 
-            # model_out, end_points = mobilenet_v3_small(images_placeholder, args.embedding, multiplier=1.0,
-            #                                        is_training=isTrain_placeholder, reuse=None)
-
-            # embedding_tensor = model_out.outputs
-            # Load the model
-
-            # sess.run(tf.global_variables_initializer())
-            # sess.run(tf.local_variables_initializer())
             load_model(ckpt_path)
-            for op in sess.graph.get_operations():
+            for op in sess.graph.get_operations():  # 看看都有哪些变量, 找到变量才能跑
                 print(op.name)
             _in = sess.graph.get_tensor_by_name("import/input:0")
             _out = g.get_tensor_by_name("import/embeddings:0")
@@ -258,28 +248,33 @@ def lfw_test(args, img_paths, identity_list, ckpt_path):
     return accuracy, threshold
 
 
-def test_on_lfw_when_traing(sess, datas, identity_list, batch_size, model_out_verify, verify_placeholder, isTrain_placeholder):
-    print('testing verification..')
+def test_on_lfw_when_traing(sess, datas, identity_list, pair_list, batch_size, model_out_verify, images_placeholder,
+                            isTrain_placeholder):
     data_nums = len(datas)
     index = 0
-
-    features = None
+    features = []
 
     # 分批将data输入模型, 得到embeddings
     while index < data_nums:
-        batch_data = datas[index:min(index + batch_size, data_nums)]
-        model_out = sess.run(model_out_verify, feed_dict={verify_placeholder: batch_data,
+        start = index
+        end = min(index + batch_size, data_nums)
+        sys.stdout.write('\r>>verify in LFW, getting embeddings: [%d]' % end)
+        sys.stdout.flush()
+        batch_datas = datas[start:end]
+
+        # 输入网络, 得到embeddings
+        model_out = sess.run(model_out_verify, feed_dict={images_placeholder: batch_datas,
                                                           isTrain_placeholder: False})
+
+        # 用numpy.concatenate太慢了, 所以这里用list的append
+        for feature in model_out:
+            features.append(feature)
+
         index += batch_size
 
-        if features is None:
-            features = model_out
-        else:
-            features = np.concatenate((features, model_out), axis=0)
-
     fe_dict = get_feature_dict(identity_list, features)
-    accuracy, threshold = test_performance(fe_dict, args.lfw_test_list)
-    print('lfw face verification accuracy: ', accuracy, 'threshold: ', threshold)
+    accuracy, threshold = test_performance(fe_dict, pair_list)
+    print('\r\nlfw face verification accuracy: ', accuracy, 'threshold: ', threshold)
 
 
 if __name__ == '__main__':
@@ -298,5 +293,6 @@ if __name__ == '__main__':
     identity_list = get_lfw_list(args.lfw_test_list)
     lfw_img_paths = [os.path.join(args.lfw_root, each) for each in identity_list]  # 所有图片的路径
 
+    # 从ckpt恢复模型并验证
     accuracy, threshold = lfw_test(args, lfw_img_paths, identity_list, args.ckpt_path)
 

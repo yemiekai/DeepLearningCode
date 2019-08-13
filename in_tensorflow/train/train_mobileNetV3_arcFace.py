@@ -31,12 +31,12 @@ def get_parser():
     # parser.add_argument('--eval_datasets', default=['lfw'], help='evluation datasets')
 
     parser.add_argument('--log_file_path', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow', help='the ckpt file save path')
-    parser.add_argument('--saver_maxkeep', default=100, help='tf.train.Saver max keep ckpt files')
+    parser.add_argument('--saver_maxkeep', default=10, help='tf.train.Saver max keep ckpt files')
     parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
     parser.add_argument('--summary_interval', default=2000, help='interval to save summary')
-    parser.add_argument('--ckpt_interval', default=100, help='intervals to save ckpt file')
-    parser.add_argument('--validate_interval', default=100, help='intervals to save eval model')
-    parser.add_argument('--show_info_interval', default=50, help='intervals to save ckpt file')
+    parser.add_argument('--ckpt_interval', default=1000, help='intervals to save ckpt file')
+    parser.add_argument('--validate_interval', default=1000, help='intervals to save eval model')
+    parser.add_argument('--show_info_interval', default=25, help='intervals to save ckpt file')
     args = parser.parse_args()
     return args
 
@@ -85,7 +85,7 @@ if __name__ == '__main__':
         # 查看GPU设备
         # print(tf.test.gpu_device_name())
         # print(tf.test.is_gpu_available())
-        # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
         args = get_parser()
 
@@ -102,7 +102,6 @@ if __name__ == '__main__':
         global_step = tf.Variable(name='global_step', initial_value=0, trainable=False)
         inc_op = tf.assign_add(global_step, 1, name='increment_global_step')
         images_placeholder = tf.placeholder(name='placeholder_inputs', shape=[None, 224, 224, 3], dtype=tf.float32)
-        verify_placeholder = tf.placeholder(name='placeholder_verify', shape=[None, 224, 224, 3], dtype=tf.float32)  # 验证模型时的输入
         labels_placeholder = tf.placeholder(name='placeholder_labels', shape=[None, ], dtype=tf.int64)
         isTrain_placeholder = tf.placeholder(name='placeholder_isTrain', dtype=tf.bool)
 
@@ -125,7 +124,6 @@ if __name__ == '__main__':
         iterator = dataset.make_initializable_iterator()
         next_element = iterator.get_next()
 
-
         # 学习率
         lr = tf.train.piecewise_constant(global_step, boundaries=args.lr_boundaries, values=args.lr_values, name='lr_schedule')
         opt = tf.train.MomentumOptimizer(learning_rate=lr, momentum=args.momentum)
@@ -136,11 +134,11 @@ if __name__ == '__main__':
                                                    multiplier=1.0,
                                                    is_training=isTrain_placeholder,
                                                    reuse=None)
-        model_out_verify = mobilenet_v3_small(inputs=verify_placeholder,
-                                              classes_num=args.embedding,
-                                              multiplier=1.0,
-                                              is_training=isTrain_placeholder,
-                                              reuse=True)
+        model_out_verify, end_points_verify = mobilenet_v3_small(inputs=images_placeholder,
+                                                                 classes_num=args.embedding,
+                                                                 multiplier=1.0,
+                                                                 is_training=isTrain_placeholder,
+                                                                 reuse=True)
         model_out = tf.identity(model_out, 'embeddings')
 
         arcface_logit = arcface_loss(embedding=model_out,
@@ -214,22 +212,22 @@ if __name__ == '__main__':
 
                     # save summary
                     if count > 0 and count % args.summary_interval == 0:
-                        print('count = %d, save summary' % count)
                         feed_dict = {images_placeholder: images_train, labels_placeholder: labels_train, isTrain_placeholder:True}
                         summary_op_val = sess.run(summary_op, feed_dict=feed_dict)
                         summary.add_summary(summary_op_val, count)
 
                     # 保存模型(ckpt)
                     if count > 0 and count % args.ckpt_interval == 0:
-                        print('count = %d, save ckpt' % count)
                         filename = 'InsightFace_iter_{:d}'.format(count) + '.ckpt'
                         filename = os.path.join(ckpt_path, filename)
+
+                        print('save ckpt file: %s' % filename)
                         saver.save(sess, filename)
 
                     # 验证
                     if count > 0 and count % args.validate_interval == 0:
-                        test_on_lfw_when_traing(sess, lfw_images_list, identity_list, args.batch_size, model_out_verify,
-                                                verify_placeholder, isTrain_placeholder)
+                        test_on_lfw_when_traing(sess, lfw_images_list, identity_list, args.lfw_test_list, args.batch_size,
+                                                model_out_verify, images_placeholder, isTrain_placeholder)
 
                 except tf.errors.OutOfRangeError:
                     print("End of epoch %d" % i)
