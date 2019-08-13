@@ -4,7 +4,7 @@ import argparse
 import os
 import time
 
-from dataset.conver_VGGFace2 import *
+from dataset.dataset_utils import *
 from models.mobilenet_v3 import *
 from test.verify_mobileNetV3_arcFace import *
 
@@ -35,7 +35,7 @@ def get_parser():
     parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
     parser.add_argument('--summary_interval', default=2000, help='interval to save summary')
     parser.add_argument('--ckpt_interval', default=1000, help='intervals to save ckpt file')
-    parser.add_argument('--validate_interval', default=1000, help='intervals to save eval model')
+    parser.add_argument('--validate_interval', default=500, help='intervals to save eval model')
     parser.add_argument('--show_info_interval', default=25, help='intervals to save ckpt file')
     args = parser.parse_args()
     return args
@@ -117,12 +117,11 @@ if __name__ == '__main__':
             if path.endswith('.tfrecord'):
                 tfrecord_files.append(path)
         dataset = tf.data.TFRecordDataset(tfrecord_files)  # 从.tfrecord文件创建dataset
-        dataset = dataset.map(parse_function)
-        dataset = dataset.repeat()  # Repeat the input indefinitely.
+        dataset = dataset.map(parse_function_VGGFace2)
+        # dataset = dataset.repeat()  # Repeat the input indefinitely.
         dataset = dataset.shuffle(buffer_size=args.buffer_size)
         dataset = dataset.batch(batch_size=args.batch_size)
         iterator = dataset.make_initializable_iterator()
-        next_element = iterator.get_next()
 
         # 学习率
         lr = tf.train.piecewise_constant(global_step, boundaries=args.lr_boundaries, values=args.lr_values, name='lr_schedule')

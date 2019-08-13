@@ -4,7 +4,7 @@ import argparse
 import os
 import time
 
-from dataset.conver_VGGFace2 import *
+from dataset.VGGFace2_conver_to_tfrecord import *
 from models.mobilenet_v3 import *
 from test.verify_mobileNetV3_arcFace import *
 

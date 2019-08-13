@@ -147,3 +147,29 @@ def read_label_file(dataset_dir, filename=LABELS_FILENAME):
         index = line.index(':')
         labels_to_class_names[int(line[:index])] = line[index+1:]
     return labels_to_class_names
+
+
+def parse_function_VGGFace2(serialized_example, *args, **kwargs):
+    """
+    这要对应制作tfrecord文件时定义的feature
+    """
+    features = {
+        'image/encoded': tf.FixedLenFeature([], tf.string),
+        'image/format': tf.FixedLenFeature([], tf.string),
+        'image/class/label': tf.FixedLenFeature([], tf.int64),
+        'image/height': tf.FixedLenFeature([], tf.int64),
+        'image/width': tf.FixedLenFeature([], tf.int64)}
+
+    parsed = tf.parse_single_example(serialized_example, features)
+
+    img = parsed['image/encoded']
+    img = tf.image.decode_png(img)  # 因为原来图片的格式是png
+    img = tf.cast(img, dtype=tf.float32)
+    img = tf.subtract(img, 127.5)
+    img = tf.multiply(img, 0.0078125)  # 就是除以128
+
+    label = parsed['image/class/label']
+    label = tf.cast(label, dtype=tf.int64)
+
+    return img, label
+

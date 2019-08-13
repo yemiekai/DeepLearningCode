@@ -121,35 +121,13 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
     sys.stdout.flush()
 
 
-def parse_function(serialized_example, *args, **kwargs):
-    features = {
-        'image/encoded': tf.FixedLenFeature([], tf.string),
-        'image/format': tf.FixedLenFeature([], tf.string),
-        'image/class/label': tf.FixedLenFeature([], tf.int64),
-        'image/height': tf.FixedLenFeature([], tf.int64),
-        'image/width': tf.FixedLenFeature([], tf.int64)}
-
-    parsed = tf.parse_single_example(serialized_example, features)
-
-    img = parsed['image/encoded']
-    img = tf.image.decode_png(img)  # 因为原来图片的格式是png
-    img = tf.cast(img, dtype=tf.float32)
-    img = tf.subtract(img, 127.5)
-    img = tf.multiply(img, 0.0078125)  # 就是除以128
-
-    label = parsed['image/class/label']
-    label = tf.cast(label, dtype=tf.int64)
-
-    return img, label
-
-
 #  https://www.tensorflow.org/guide/datasets?hl=zh-cn
 def decode_from_tfrecord(file_name):
     # **1.把所有的 tfrecord 文件名列表写入队列中
     filinames = []
     filinames.append(file_name)
     dataset = tf.data.TFRecordDataset(filinames)
-    dataset = dataset.map(parse_function)
+    dataset = dataset.map(dataset_utils.parse_function_VGGFace2)
     dataset = dataset.repeat()  # Repeat the input indefinitely.
     dataset = dataset.batch(32)
     iterator = dataset.make_initializable_iterator()
