@@ -205,7 +205,9 @@ def get_featurs(args, test_list, batch_size, input_shape, ckpt_path):
 
             load_model(ckpt_path)
             for op in sess.graph.get_operations():  # 看看都有哪些变量, 找到变量才能跑
-                print(op.name)
+                if 'input' in op.name or 'output' in op.name:
+                    print(op.name)
+
             _in = sess.graph.get_tensor_by_name("import/input:0")
             _out = g.get_tensor_by_name("import/embeddings:0")
             _train = g.get_tensor_by_name("import/placeholder_isTrain:0")
@@ -248,8 +250,8 @@ def lfw_test(args, img_paths, identity_list, ckpt_path):
     return accuracy, threshold
 
 
-def test_on_lfw_when_traing(sess, datas, identity_list, pair_list, batch_size, model_out_verify, images_placeholder,
-                            isTrain_placeholder):
+def test_on_lfw_when_training(sess, datas, identity_list, pair_list, batch_size, model_out_verify, images_placeholder,
+                              isTrain_placeholder):
     data_nums = len(datas)
     index = 0
     features = []

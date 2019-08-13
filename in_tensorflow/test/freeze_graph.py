@@ -79,8 +79,13 @@ def main(args):
             graph = tf.get_default_graph()
             input_graph_def = graph.as_graph_def()
 
+            output_list = []
+            for op in graph.get_operations():  # 看看都有哪些变量, 找到变量才能跑
+                if 'Logits_out/output' in op.name:  # 这个名字要根据网络的定义
+                    output_list.append(op.name)
+
             # 暂时没有设置黑白名单
-            output_graph_def = graph_util.convert_variables_to_constants(sess, input_graph_def)
+            output_graph_def = graph_util.convert_variables_to_constants(sess, input_graph_def, output_list)
 
         # Serialize and dump the output graph to the filesystem
         with tf.gfile.GFile(args.output_file, 'wb') as f:
@@ -93,7 +98,7 @@ def parse_arguments(argv):
     
     parser.add_argument('--model_dir', type=str,
                         help='Directory containing the metagraph (.meta) file and the checkpoint (ckpt) file containing model parameters',
-                        default=r"\\YEMIEKAI_PC\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-12\output\ckpt")
+                        default=r"E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-13\output\ckpt")
 
     parser.add_argument('--output_file', type=str,
                         help='Filename for the exported graphdef protobuf (.pb)',

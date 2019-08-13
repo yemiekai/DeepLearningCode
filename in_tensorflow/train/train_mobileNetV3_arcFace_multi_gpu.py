@@ -17,7 +17,7 @@ def get_parser():
 
     parser.add_argument('--gpus', default=2, help='gpu nums')
     parser.add_argument('--batch_size', default=256, help='batch size to train network')
-    parser.add_argument('--eval_batch_size', default=64, help='batch size to eval network')
+    parser.add_argument('--eval_batch_size', default=128, help='batch size to eval network')
     parser.add_argument('--image_size', default=(224, 224, 3))
     parser.add_argument('--buffer_size', default=25600, help='tf dataset api buffer size')
     parser.add_argument('--num_classes', default=8631, help='classes')
@@ -30,13 +30,13 @@ def get_parser():
     # parser.add_argument('--weight_deacy', default=5e-4, help='learning alg momentum')
     # parser.add_argument('--eval_datasets', default=['lfw'], help='evluation datasets')
 
-    parser.add_argument('--log_file_path', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow', help='the ckpt file save path')
+    parser.add_argument('--log_file_path', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\GPU', help='the ckpt file save path')
     parser.add_argument('--saver_maxkeep', default=100, help='tf.train.Saver max keep ckpt files')
     parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
     parser.add_argument('--summary_interval', default=1000, help='interval to save summary')
     parser.add_argument('--ckpt_interval', default=500, help='intervals to save ckpt file')
-    parser.add_argument('--validate_interval', default=100, help='intervals to save eval model')
-    parser.add_argument('--show_info_interval', default=50, help='intervals to save ckpt file')
+    parser.add_argument('--validate_interval', default=500, help='intervals to save eval model')
+    parser.add_argument('--show_info_interval', default=25, help='intervals to save ckpt file')
     args = parser.parse_args()
     return args
 
@@ -90,8 +90,8 @@ if __name__ == '__main__':
     # 设置路径--保存训练产生的数据
     date = time.strftime("%Y-%m-%d", time.localtime())
     save_path = os.path.join(args.log_file_path, date)  # 保存的文件夹路径
-    ckpt_path = os.path.join(save_path, r'output\ckpt')  # 保存ckpt的路径
-    summary_path = os.path.join(save_path, r'output\summary')  # 保存summary的路径
+    ckpt_path = os.path.join(save_path, 'ckpt')  # 保存ckpt的路径
+    summary_path = os.path.join(save_path, 'summary')  # 保存summary的路径
     os.makedirs(save_path, exist_ok=True)
     os.makedirs(ckpt_path, exist_ok=True)
     os.makedirs(summary_path, exist_ok=True)
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     # 从.tfrecord文件创建dataset
     dataset = tf.data.TFRecordDataset(tfrecord_files)
     dataset = dataset.map(parse_function_VGGFace2)
-    dataset = dataset.repeat()  # Repeat the input indefinitely.
+    # dataset = dataset.repeat()  # Repeat the input indefinitely.
     dataset = dataset.shuffle(buffer_size=args.buffer_size)
     dataset = dataset.batch(batch_size=args.batch_size)
     iterator = dataset.make_initializable_iterator()
@@ -190,7 +190,6 @@ if __name__ == '__main__':
     # Apply the gradients to adjust the shared variables.
     train_op = opt.apply_gradients(grads, global_step=global_step)
 
-
     # 3.10 define sess
     config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=args.log_device_mapping)
     config.gpu_options.allow_growth = True
@@ -255,16 +254,15 @@ if __name__ == '__main__':
 
                 # save ckpt files
                 if count > 0 and count % args.ckpt_interval == 0:
-                    print('count = %d, save ckpt' % count)
                     filename = 'InsightFace_iter_{:d}'.format(count) + '.ckpt'
                     filename = os.path.join(ckpt_path, filename)
+                    print('save ckpt file: %s' % filename)
                     saver.save(sess, filename)
 
                 # validate
                 if count > 0 and count % args.validate_interval == 0:
-                    print('count = %d, validate' % count)
-                    test_on_lfw_when_traing(sess, lfw_images_list, identity_list, args.lfw_test_list, args.batch_size,
-                                            model_out_verify, images_placeholder, isTrain_placeholder)
+                    test_on_lfw_when_training(sess, lfw_images_list, identity_list, args.lfw_test_list, args.batch_size,
+                                              model_out_verify, images_placeholder, isTrain_placeholder)
 
             except tf.errors.OutOfRangeError:
                 print("End of epoch %d" % i)

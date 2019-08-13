@@ -221,14 +221,13 @@ if __name__ == '__main__':
                     if count > 0 and count % args.ckpt_interval == 0:
                         filename = 'InsightFace_iter_{:d}'.format(count) + '.ckpt'
                         filename = os.path.join(ckpt_path, filename)
-
                         print('save ckpt file: %s' % filename)
                         saver.save(sess, filename)
 
                     # 验证
                     if count > 0 and count % args.validate_interval == 0:
-                        test_on_lfw_when_traing(sess, lfw_images_list, identity_list, args.lfw_test_list, args.batch_size,
-                                                model_out_verify, images_placeholder, isTrain_placeholder)
+                        test_on_lfw_when_training(sess, lfw_images_list, identity_list, args.lfw_test_list, args.batch_size,
+                                                  model_out_verify, images_placeholder, isTrain_placeholder)
 
                 except tf.errors.OutOfRangeError:
                     print("End of epoch %d" % i)
