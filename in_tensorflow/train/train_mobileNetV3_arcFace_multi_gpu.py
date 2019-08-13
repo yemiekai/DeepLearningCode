@@ -4,7 +4,7 @@ import argparse
 import os
 import time
 
-from dataset.VGGFace2_conver_to_tfrecord import *
+from dataset.dataset_utils import *
 from models.mobilenet_v3 import *
 from test.verify_mobileNetV3_arcFace import *
 
@@ -106,11 +106,10 @@ if __name__ == '__main__':
     # splits input to different gpu
     images_s = tf.split(images_placeholder, num_or_size_splits=args.gpus, axis=0)
     labels_s = tf.split(labels_placeholder, num_or_size_splits=args.gpus, axis=0)
+
     # 验证集
     identity_list = get_lfw_list(args.lfw_test_list)
     lfw_img_paths = [os.path.join(args.lfw_root, each) for each in identity_list]  # 所有图片的路径
-
-    # accuracy, threshold = lfw_test(args, lfw_img_paths, identity_list, r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-12\output\ckpt')
 
     # 2 prepare train datasets and test datasets by using tensorflow dataset api
     # 2.1 train datasets
@@ -122,21 +121,17 @@ if __name__ == '__main__':
             tfrecord_files.append(path)
     # 从.tfrecord文件创建dataset
     dataset = tf.data.TFRecordDataset(tfrecord_files)
-    dataset = dataset.map(parse_function)
+    dataset = dataset.map(parse_function_VGGFace2)
     dataset = dataset.repeat()  # Repeat the input indefinitely.
     dataset = dataset.shuffle(buffer_size=args.buffer_size)
     dataset = dataset.batch(batch_size=args.batch_size)
     iterator = dataset.make_initializable_iterator()
     next_element = iterator.get_next()
 
-    # 2.2 prepare validate datasets
-    # ver_list = []
-    # ver_name_list = []
-    # for db in args.eval_datasets:
-    #     print('begin db %s convert.' % db)
-    #     data_set = load_bin(db, args.image_size, args)
-    #     ver_list.append(data_set)
-    #     ver_name_list.append(db)
+    # 验证集
+    identity_list = get_lfw_list(args.lfw_test_list)  # 所有人名
+    lfw_img_paths = [os.path.join(args.lfw_root, each) for each in identity_list]  # 所有图片的路径
+    lfw_images_list = read_all(lfw_img_paths, args.image_size)  # 所有图像(numpy数组)
 
     lr = tf.train.piecewise_constant(global_step, boundaries=args.lr_boundaries, values=args.lr_values, name='lr_schedule')
     opt = tf.train.MomentumOptimizer(learning_rate=lr, momentum=args.momentum)
@@ -180,6 +175,13 @@ if __name__ == '__main__':
                     loss_keys.append(('inference_loss_%s_%d' % ('gpu', i)))
                     loss_dict[('total_loss_%s_%d' % ('gpu', i))] = total_loss
                     loss_keys.append(('total_loss_%s_%d' % ('gpu', i)))
+
+                    if i == 0:
+                        model_out_verify, end_points_verify = mobilenet_v3_small(inputs=images_placeholder,
+                                                                                 classes_num=args.embedding,
+                                                                                 multiplier=1.0,
+                                                                                 is_training=isTrain_placeholder,
+                                                                                 reuse=True)
 
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
@@ -261,7 +263,8 @@ if __name__ == '__main__':
                 # validate
                 if count > 0 and count % args.validate_interval == 0:
                     print('count = %d, validate' % count)
-                    # accuracy, threshold = lfw_test(args, lfw_img_paths, identity_list, ckpt_path, eval_graph)
+                    test_on_lfw_when_traing(sess, lfw_images_list, identity_list, args.lfw_test_list, args.batch_size,
+                                            model_out_verify, images_placeholder, isTrain_placeholder)
 
             except tf.errors.OutOfRangeError:
                 print("End of epoch %d" % i)

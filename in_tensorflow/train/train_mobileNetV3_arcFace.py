@@ -123,6 +123,8 @@ if __name__ == '__main__':
         dataset = dataset.batch(batch_size=args.batch_size)
         iterator = dataset.make_initializable_iterator()
 
+        next_element = iterator.get_next()
+
         # 学习率
         lr = tf.train.piecewise_constant(global_step, boundaries=args.lr_boundaries, values=args.lr_values, name='lr_schedule')
         opt = tf.train.MomentumOptimizer(learning_rate=lr, momentum=args.momentum)

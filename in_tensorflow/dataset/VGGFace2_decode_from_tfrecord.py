@@ -27,8 +27,8 @@ if __name__ == "__main__":
     # dataset = dataset.repeat()  # Repeat the input indefinitely.
     dataset = dataset.shuffle(buffer_size=args.buffer_size)
     dataset = dataset.batch(batch_size=args.batch_size)
-    dataset.make_one_shot_iterator()
     iterator = dataset.make_initializable_iterator()
+    next_element = iterator.get_next()
 
     with tf.Session() as sess:
         sess.run(iterator.initializer)
@@ -38,13 +38,16 @@ if __name__ == "__main__":
         start = time.time()
         while True:
             try:
+                start2 = time.time()
+                _next_element = sess.run(next_element)
+                end2 = time.time()
 
-                next_element = iterator.get_next()
-                next_element = sess.run(next_element)
                 samples += args.batch_size
-
                 t = time.time() - start
-                sys.stdout.write('\r>>getting batch Data [%d], time [%.2f]s, speed: [%.2f]/sec' % (samples, t, samples/t))
+
+                sys.stdout.write('\r>>The real-time speed: %.2f/s' % (args.batch_size/(end2-start2)))
+                sys.stdout.write('  ---  total data [%d], total time [%.2f]s, average speed: [%.2f]/s' %
+                                 (samples, t, samples/t))
                 sys.stdout.flush()
 
             except tf.errors.OutOfRangeError:
