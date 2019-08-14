@@ -145,25 +145,25 @@ if __name__ == '__main__':
             with tf.device('/gpu:%d' % i):
                 with tf.name_scope('mobileNetV3_tower_%d' % i) as scope:
                     w_init_method = tf.contrib.layers.xavier_initializer(uniform=False)
-                    model_out, end_points = mobilenet_v3_small(images_s[i], args.embedding, multiplier=1.0,
+                    model_out, end_points = mobilenet_v3_large(images_s[i], args.embedding, multiplier=1.0,
                                                                is_training=isTrain_placeholder, reuse=None)
                     arcface_logit = arcface_loss(embedding=model_out, labels=labels_s[i], w_init=w_init_method,
                                                  out_num=args.num_classes)
                     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=arcface_logit,
                                                                                    labels=labels_s[i],
                                                                                    name='cross_entropy_per_example')
-                    inference_loss = tf.reduce_mean(cross_entropy, name='cross_entropy')
+                    total_loss = tf.reduce_mean(cross_entropy, name='cross_entropy')
 
-                    tf.add_to_collection('losses', inference_loss)
+                    # tf.add_to_collection('losses', inference_loss)
 
-                    losses = tf.get_collection('losses', scope)
-                    total_loss = tf.add_n(losses, name='total_loss')
+                    # losses = tf.get_collection('losses', scope)
+                    # total_loss = tf.add_n(losses, name='total_loss')
 
                     # Reuse variables for the next tower.
                     tf.get_variable_scope().reuse_variables()
 
                     # Retain the summaries from the final tower.
-                    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+                    # summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
                     # Calculate the gradients for the batch of data on this CIFAR tower.
                     grads = opt.compute_gradients(total_loss)
@@ -171,13 +171,11 @@ if __name__ == '__main__':
                     # Keep track of the gradients across all towers.
                     tower_grads.append(grads)
 
-                    loss_dict[('inference_loss_%s_%d' % ('gpu', i))] = inference_loss
-                    loss_keys.append(('inference_loss_%s_%d' % ('gpu', i)))
                     loss_dict[('total_loss_%s_%d' % ('gpu', i))] = total_loss
                     loss_keys.append(('total_loss_%s_%d' % ('gpu', i)))
 
                     if i == 0:
-                        model_out_verify, end_points_verify = mobilenet_v3_small(inputs=images_placeholder,
+                        model_out_verify, end_points_verify = mobilenet_v3_large(inputs=images_placeholder,
                                                                                  classes_num=args.embedding,
                                                                                  multiplier=1.0,
                                                                                  is_training=isTrain_placeholder,
@@ -226,23 +224,22 @@ if __name__ == '__main__':
         sess.run(iterator.initializer)
         while True:
             try:
+                start = time.time()
                 images_train, labels_train = sess.run(next_element)
                 feed_dict = {images_placeholder: images_train,
                              labels_placeholder: labels_train,
                              isTrain_placeholder: True}
 
-                start = time.time()
-                _, _, inference_loss_gpu_1, total_loss_gpu_1, inference_loss_gpu_2, total_loss_gpu_2, _lr = sess.run(
-                    [train_op, inc_op, loss_dict[loss_keys[0]], loss_dict[loss_keys[1]], loss_dict[loss_keys[2]],
-                     loss_dict[loss_keys[3]], lr], feed_dict=feed_dict)
+                _, _, total_loss_gpu_1, total_loss_gpu_2, _lr = sess.run(
+                    [train_op, inc_op, loss_dict[loss_keys[0]], loss_dict[loss_keys[1]], lr], feed_dict=feed_dict)
 
                 end = time.time()
                 pre_sec = args.batch_size/(end - start)
 
                 # print training information
                 if count > 0 and count % args.show_info_interval == 0:
-                    print('epoch %d, total_step %d, lr: %.5f, total loss: [%.2f, %.2f], inference loss: [%.2f, %.2f], time %.3f samples/sec' %
-                          (i, count, _lr, total_loss_gpu_1, total_loss_gpu_2, inference_loss_gpu_1, inference_loss_gpu_2, pre_sec))
+                    print('epoch %d, total_step %d, lr: %.5f, total loss: [%.2f, %.2f], time %.3f samples/sec' %
+                          (i, count, _lr, total_loss_gpu_1, total_loss_gpu_2, pre_sec))
                 count += 1
 
                 # save summary

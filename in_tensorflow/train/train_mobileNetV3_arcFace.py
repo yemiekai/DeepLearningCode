@@ -25,7 +25,7 @@ def get_parser():
 
     parser.add_argument('--epoch', default=30, help='epoch to train the network')
     parser.add_argument('--lr_boundaries', default=[10000, 20000, 40000, 80000], help='learning rate to train network')
-    parser.add_argument('--lr_values', default=[0.01, 0.008, 0.005, 0.001, 0.0001], help='learning rate to train network')
+    parser.add_argument('--lr_values', default=[0.01, 0.008, 0.005, 0.003, 0.001], help='learning rate to train network')
     parser.add_argument('--momentum', default=0.9, help='learning alg momentum')
     # parser.add_argument('--weight_deacy', default=5e-4, help='learning alg momentum')
     # parser.add_argument('--eval_datasets', default=['lfw'], help='evluation datasets')
@@ -85,7 +85,7 @@ if __name__ == '__main__':
         # 查看GPU设备
         # print(tf.test.gpu_device_name())
         # print(tf.test.is_gpu_available())
-        os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
         args = get_parser()
 
@@ -135,11 +135,11 @@ if __name__ == '__main__':
                                                    multiplier=1.0,
                                                    is_training=isTrain_placeholder,
                                                    reuse=None)
-        model_out_verify, end_points_verify = mobilenet_v3_small(inputs=images_placeholder,
-                                                                 classes_num=args.embedding,
-                                                                 multiplier=1.0,
-                                                                 is_training=isTrain_placeholder,
-                                                                 reuse=True)
+        # model_out_verify, end_points_verify = mobilenet_v3_small(inputs=images_placeholder,
+        #                                                          classes_num=args.embedding,
+        #                                                          multiplier=1.0,
+        #                                                          is_training=isTrain_placeholder,
+        #                                                          reuse=True)
         model_out = tf.identity(model_out, 'embeddings')
 
         arcface_logit = arcface_loss(embedding=model_out,
@@ -151,12 +151,12 @@ if __name__ == '__main__':
                                                                        name='cross_entropy_per_example')
         inference_loss = tf.reduce_mean(cross_entropy, name='cross_entropy')
 
-        # tf.add_to_collection('losses', inference_loss)
-        # losses = tf.get_collection('losses')
-        # total_loss = tf.add_n(losses, name='total_loss')
+        tf.add_to_collection('losses', inference_loss)
+        losses = tf.get_collection('losses')
+        total_loss = tf.add_n(losses, name='total_loss')
 
         summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-        grads = opt.compute_gradients(inference_loss)
+        grads = opt.compute_gradients(total_loss)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
@@ -182,8 +182,8 @@ if __name__ == '__main__':
         summary_op = tf.summary.merge(summaries)
 
         # 初始化变量
-        sess.run(tf.global_variables_initializer(), feed_dict={isTrain_placeholder: False})
-        sess.run(tf.local_variables_initializer(), feed_dict={isTrain_placeholder: False})
+        sess.run(tf.global_variables_initializer())
+        sess.run(tf.local_variables_initializer())
         sess.run(iterator.initializer)
         saver = tf.train.Saver()
 
@@ -200,7 +200,7 @@ if __name__ == '__main__':
                                  isTrain_placeholder: True}
 
                     start = time.time()
-                    _, _, _inference_loss, _lr = sess.run([train_op, inc_op, inference_loss, lr], feed_dict=feed_dict)
+                    _, _, _total_loss, _lr = sess.run([train_op, inc_op, total_loss, lr], feed_dict=feed_dict)
                     count += 1
                     end = time.time()
 
@@ -208,8 +208,8 @@ if __name__ == '__main__':
 
                     # 打印训练情况
                     if count > 0 and count % args.show_info_interval == 0:
-                        print('epoch %d, total_step %d, lr: %.5f, inference loss: %.2f, time %.3f samples/sec' %
-                              (i, count, _lr, _inference_loss, pre_sec))
+                        print('epoch %d, total_step %d, lr: %.5f, total loss: %.2f, time %.3f samples/sec' %
+                              (i, count, _lr, _total_loss, pre_sec))
 
                     # save summary
                     if count > 0 and count % args.summary_interval == 0:
@@ -227,7 +227,7 @@ if __name__ == '__main__':
                     # 验证
                     if count > 0 and count % args.validate_interval == 0:
                         test_on_lfw_when_training(sess, lfw_images_list, identity_list, args.lfw_test_list, args.batch_size,
-                                                  model_out_verify, images_placeholder, isTrain_placeholder)
+                                                  model_out, images_placeholder, isTrain_placeholder)
 
                 except tf.errors.OutOfRangeError:
                     print("End of epoch %d" % i)

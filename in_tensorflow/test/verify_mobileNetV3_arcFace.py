@@ -7,6 +7,7 @@ import time
 import math
 import sys
 import re
+import gc
 
 
 
@@ -135,6 +136,7 @@ def test_performance(fe_dict, pair_list):
         labels.append(label)
 
     accuracy, threshold = cal_accuracy(sims, labels)
+
     return accuracy, threshold
 
 
@@ -262,15 +264,14 @@ def test_on_lfw_when_training(sess, datas, identity_list, pair_list, batch_size,
         end = min(index + batch_size, data_nums)
         sys.stdout.write('\r>>verify in LFW, getting embeddings: [%d]' % end)
         sys.stdout.flush()
-        batch_datas = datas[start:end]
 
         # 输入网络, 得到embeddings
-        model_out = sess.run(model_out_verify, feed_dict={images_placeholder: batch_datas,
+        model_out = sess.run(model_out_verify, feed_dict={images_placeholder: datas[start:end],
                                                           isTrain_placeholder: False})
 
         # 用numpy.concatenate太慢了, 所以这里用list的append
-        for feature in model_out:
-            features.append(feature)
+        for logit in model_out:
+            features.append(logit)
 
         index += batch_size
 
