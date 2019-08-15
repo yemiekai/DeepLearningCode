@@ -277,7 +277,7 @@ def test_on_lfw_when_training(sess, datas, identity_list, pair_list, batch_size,
 
     fe_dict = get_feature_dict(identity_list, features)
     accuracy, threshold = test_performance(fe_dict, pair_list)
-    print('\r\nlfw face verification accuracy: ', accuracy, 'threshold: ', threshold)
+    return accuracy, threshold
 
 
 if __name__ == '__main__':

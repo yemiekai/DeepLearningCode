@@ -9,6 +9,11 @@ from models.mobilenet_v3 import *
 from test.verify_mobileNetV3_arcFace import *
 
 
+def write_log_file(filename, content):
+    with open(log_filename, 'a') as fout:
+        fout.write(content + '\n')
+
+
 def get_parser():
     parser = argparse.ArgumentParser(description='parameters to train net')
     parser.add_argument('--train_datasets_dir', default=r'F:\DeepLearning_DataSet\VGGFace2_train_mtcnnpy_224_tfrecord', help='train datasets base path')
@@ -92,6 +97,8 @@ if __name__ == '__main__':
         # 设置路径: 保存训练产生的数据
         date = time.strftime("%Y-%m-%d", time.localtime())
         save_path = os.path.join(args.log_file_path, date)  # 保存的文件夹路径
+        log_filename = os.path.join(save_path, 'Console_Log.txt')  # 日志路径
+
         ckpt_path = os.path.join(save_path, 'ckpt')  # 保存ckpt的路径
         summary_path = os.path.join(save_path, 'summary')  # 保存summary的路径
         os.makedirs(save_path, exist_ok=True)
@@ -208,8 +215,11 @@ if __name__ == '__main__':
 
                     # 打印训练情况
                     if count > 0 and count % args.show_info_interval == 0:
-                        print('epoch %d, total_step %d, lr: %.5f, total loss: %.2f, time %.3f samples/sec' %
-                              (i, count, _lr, _total_loss, pre_sec))
+                        time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                        log = '[%s] epoch:%d  total_step:%d  lr:%.5f  total loss:%.2f  time:%.3f samples/sec' % \
+                              (time_str, i, count, _lr, _total_loss, pre_sec)
+                        write_log_file(log_filename, log)
+                        print(log)
 
                     # save summary
                     if count > 0 and count % args.summary_interval == 0:
@@ -221,14 +231,20 @@ if __name__ == '__main__':
                     if count > 0 and count % args.ckpt_interval == 0:
                         filename = 'InsightFace_iter_{:d}'.format(count) + '.ckpt'
                         filename = os.path.join(ckpt_path, filename)
-                        print('save ckpt file: %s' % filename)
                         saver.save(sess, filename)
+                        log = 'save ckpt file: %s' % filename
+                        write_log_file(log_filename, log)
+                        print(log)
 
                     # 验证
                     if count > 0 and count % args.validate_interval == 0:
-                        test_on_lfw_when_training(sess, lfw_images_list, identity_list, args.lfw_test_list, args.batch_size,
-                                                  model_out, images_placeholder, isTrain_placeholder)
+                        accuracy, threshold = test_on_lfw_when_training(sess, lfw_images_list, identity_list,
+                                                                        args.lfw_test_list, args.batch_size,
+                                                                        model_out, images_placeholder, isTrain_placeholder)
 
+                        log = '\r\nlfw face verification accuracy: %f   threshold: %f' % (accuracy, threshold)
+                        write_log_file(log_filename, log)
+                        print(log)
                 except tf.errors.OutOfRangeError:
                     print("End of epoch %d" % i)
                     break
