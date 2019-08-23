@@ -10,4 +10,10 @@
   
 ### 问题:
 1. 许多Tensorflow的操作(opt)还不支持转换,例如tf.layers.batch_normalization
+  
+  
+## .tflite的用法
+1. 参考官方教程https://github.com/tensorflow/examples/tree/master/lite/examples/image_classification/android  
+2. 我的做的[安卓项目](https://github.com/yemiekai/Vedio_Voice)含人脸对比功能
+
 
