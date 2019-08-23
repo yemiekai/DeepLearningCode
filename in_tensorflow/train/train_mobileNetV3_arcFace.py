@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow.python.tools.freeze_graph import freeze_graph
 
 import argparse
 import os
@@ -39,7 +40,7 @@ def get_parser():
     parser.add_argument('--saver_maxkeep', default=10, help='tf.train.Saver max keep ckpt files')
     parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
     parser.add_argument('--summary_interval', default=2000, help='interval to save summary')
-    parser.add_argument('--ckpt_interval', default=1000, help='intervals to save ckpt file')
+    parser.add_argument('--ckpt_interval', default=100, help='intervals to save ckpt file')
     parser.add_argument('--validate_interval', default=500, help='intervals to save eval model')
     parser.add_argument('--show_info_interval', default=25, help='intervals to save ckpt file')
     args = parser.parse_args()
@@ -98,6 +99,7 @@ if __name__ == '__main__':
         date = time.strftime("%Y-%m-%d", time.localtime())
         save_path = os.path.join(args.log_file_path, date)  # 保存的文件夹路径
         log_filename = os.path.join(save_path, 'Console_Log.txt')  # 日志路径
+        tflite_filename = os.path.join(save_path, 'mobileNetV3_small_insightFace.tflite')  # tflite路径
 
         ckpt_path = os.path.join(save_path, 'ckpt')  # 保存ckpt的路径
         summary_path = os.path.join(save_path, 'summary')  # 保存summary的路径
@@ -235,6 +237,26 @@ if __name__ == '__main__':
                         log = 'save ckpt file: %s' % filename
                         write_log_file(log_filename, log)
                         print(log)
+
+                        # 保存计算图
+                        tf.io.write_graph(sess.graph_def, save_path, 'model_graph.pb')
+                        # 把图和参数结合一起
+                        freeze_graph(input_graph=os.path.join(save_path, 'model_graph.pb'),
+                                     input_saver=None,
+                                     input_binary=False,
+                                     input_checkpoint=filename,
+                                     output_node_names="embeddings",
+                                     restore_op_name=None,
+                                     filename_tensor_name=None,
+                                     output_graph=os.path.join(save_path, 'model_frozen.pb'),
+                                     clear_devices=True,
+                                     initializer_nodes='')
+
+                        # # 保存成tflite
+                        # converter = tf.lite.TFLiteConverter.from_session(sess, [images_placeholder], [model_out])
+                        # tflite_model = converter.convert()
+                        # with open(tflite_filename, 'wb') as fout:
+                        #     fout.write(tflite_model)
 
                     # 验证
                     if count > 0 and count % args.validate_interval == 0:
