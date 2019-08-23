@@ -240,23 +240,6 @@ if __name__ == '__main__':
 
                         # 保存计算图
                         tf.io.write_graph(sess.graph_def, save_path, 'model_graph.pb')
-                        # 把图和参数结合一起
-                        freeze_graph(input_graph=os.path.join(save_path, 'model_graph.pb'),
-                                     input_saver=None,
-                                     input_binary=False,
-                                     input_checkpoint=filename,
-                                     output_node_names="embeddings",
-                                     restore_op_name=None,
-                                     filename_tensor_name=None,
-                                     output_graph=os.path.join(save_path, 'model_frozen.pb'),
-                                     clear_devices=True,
-                                     initializer_nodes='')
-
-                        # # 保存成tflite
-                        # converter = tf.lite.TFLiteConverter.from_session(sess, [images_placeholder], [model_out])
-                        # tflite_model = converter.convert()
-                        # with open(tflite_filename, 'wb') as fout:
-                        #     fout.write(tflite_model)
 
                     # 验证
                     if count > 0 and count % args.validate_interval == 0:

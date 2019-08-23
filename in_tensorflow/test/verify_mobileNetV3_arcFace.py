@@ -1,7 +1,7 @@
 from __future__ import print_function
+import tensorflow as tf
 import os
 import cv2
-from models.mobilenet_v3 import *
 import numpy as np
 import time
 import math
