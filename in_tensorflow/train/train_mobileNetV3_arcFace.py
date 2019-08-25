@@ -37,11 +37,11 @@ def get_parser():
     # parser.add_argument('--eval_datasets', default=['lfw'], help='evluation datasets')
 
     parser.add_argument('--log_file_path', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow', help='the ckpt file save path')
-    parser.add_argument('--saver_maxkeep', default=10, help='tf.train.Saver max keep ckpt files')
+    parser.add_argument('--saver_maxkeep', default=30, help='tf.train.Saver max keep ckpt files')
     parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
     parser.add_argument('--summary_interval', default=2000, help='interval to save summary')
-    parser.add_argument('--ckpt_interval', default=100, help='intervals to save ckpt file')
-    parser.add_argument('--validate_interval', default=500, help='intervals to save eval model')
+    parser.add_argument('--ckpt_interval', default=2000, help='intervals to save ckpt file')
+    parser.add_argument('--validate_interval', default=2000, help='intervals to save eval model')
     parser.add_argument('--show_info_interval', default=25, help='intervals to save ckpt file')
     args = parser.parse_args()
     return args
@@ -102,17 +102,17 @@ if __name__ == '__main__':
         tflite_filename = os.path.join(save_path, 'mobileNetV3_small_insightFace.tflite')  # tflite路径
 
         ckpt_path = os.path.join(save_path, 'ckpt')  # 保存ckpt的路径
-        summary_path = os.path.join(save_path, 'summary')  # 保存summary的路径
+        # summary_path = os.path.join(save_path, 'summary')  # 保存summary的路径
         os.makedirs(save_path, exist_ok=True)
         os.makedirs(ckpt_path, exist_ok=True)
-        os.makedirs(summary_path, exist_ok=True)
+        # os.makedirs(summary_path, exist_ok=True)
 
         # 设置参数(从ckpt恢复计算图和参数时, 要用到这个name)
         global_step = tf.Variable(name='global_step', initial_value=0, trainable=False)
         inc_op = tf.assign_add(global_step, 1, name='increment_global_step')
         images_placeholder = tf.placeholder(name='placeholder_inputs', shape=[None, 224, 224, 3], dtype=tf.float32)
         labels_placeholder = tf.placeholder(name='placeholder_labels', shape=[None, ], dtype=tf.int64)
-        isTrain_placeholder = tf.placeholder(name='placeholder_isTrain', dtype=tf.bool)
+        # isTrain_placeholder = tf.placeholder(name='placeholder_isTrain', dtype=tf.bool)
 
         # 验证集
         identity_list = get_lfw_list(args.lfw_test_list)  # 所有人名
@@ -142,13 +142,13 @@ if __name__ == '__main__':
         model_out, end_points = mobilenet_v3_small(inputs=images_placeholder,
                                                    classes_num=args.embedding,
                                                    multiplier=1.0,
-                                                   is_training=isTrain_placeholder,
+                                                   is_training=True,
                                                    reuse=None)
-        # model_out_verify, end_points_verify = mobilenet_v3_small(inputs=images_placeholder,
-        #                                                          classes_num=args.embedding,
-        #                                                          multiplier=1.0,
-        #                                                          is_training=isTrain_placeholder,
-        #                                                          reuse=True)
+        model_out_verify, end_points_verify = mobilenet_v3_small(inputs=images_placeholder,
+                                                                 classes_num=args.embedding,
+                                                                 multiplier=1.0,
+                                                                 is_training=False,
+                                                                 reuse=True)
         model_out = tf.identity(model_out, 'embeddings')
 
         arcface_logit = arcface_loss(embedding=model_out,
@@ -175,20 +175,20 @@ if __name__ == '__main__':
         config.gpu_options.allow_growth = True
         sess = tf.Session(config=config)
 
-        # summary writer
-        summary = tf.summary.FileWriter(summary_path, sess.graph)
-        summaries = []
-
-        # add grad histogram op
-        for grad, var in grads:
-            if grad is not None:
-                summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
-        # add trainabel variable gradients
-        for var in tf.trainable_variables():
-            summaries.append(tf.summary.histogram(var.op.name, var))
-        # add learning rate
-        summaries.append(tf.summary.scalar('leraning_rate', lr))
-        summary_op = tf.summary.merge(summaries)
+        # # summary writer
+        # summary = tf.summary.FileWriter(summary_path, sess.graph)
+        # summaries = []
+        #
+        # # add grad histogram op
+        # for grad, var in grads:
+        #     if grad is not None:
+        #         summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
+        # # add trainabel variable gradients
+        # for var in tf.trainable_variables():
+        #     summaries.append(tf.summary.histogram(var.op.name, var))
+        # # add learning rate
+        # summaries.append(tf.summary.scalar('leraning_rate', lr))
+        # summary_op = tf.summary.merge(summaries)
 
         # 初始化变量
         sess.run(tf.global_variables_initializer())
@@ -206,7 +206,8 @@ if __name__ == '__main__':
                     images_train, labels_train = sess.run(next_element)
                     feed_dict = {images_placeholder: images_train,
                                  labels_placeholder: labels_train,
-                                 isTrain_placeholder: True}
+                                 # isTrain_placeholder: True
+                                 }
 
                     start = time.time()
                     _, _, _total_loss, _lr = sess.run([train_op, inc_op, total_loss, lr], feed_dict=feed_dict)
@@ -223,11 +224,11 @@ if __name__ == '__main__':
                         write_log_file(log_filename, log)
                         print(log)
 
-                    # save summary
-                    if count > 0 and count % args.summary_interval == 0:
-                        feed_dict = {images_placeholder: images_train, labels_placeholder: labels_train, isTrain_placeholder:True}
-                        summary_op_val = sess.run(summary_op, feed_dict=feed_dict)
-                        summary.add_summary(summary_op_val, count)
+                    # # save summary
+                    # if count > 0 and count % args.summary_interval == 0:
+                    #     feed_dict = {images_placeholder: images_train, labels_placeholder: labels_train, isTrain_placeholder:True}
+                    #     summary_op_val = sess.run(summary_op, feed_dict=feed_dict)
+                    #     summary.add_summary(summary_op_val, count)
 
                     # 保存模型(ckpt)
                     if count > 0 and count % args.ckpt_interval == 0:
@@ -239,13 +240,16 @@ if __name__ == '__main__':
                         print(log)
 
                         # 保存计算图
+                        filename_graph = os.path.join(save_path, 'model_graph.pb')
                         tf.io.write_graph(sess.graph_def, save_path, 'model_graph.pb')
 
                     # 验证
                     if count > 0 and count % args.validate_interval == 0:
                         accuracy, threshold = test_on_lfw_when_training(sess, lfw_images_list, identity_list,
                                                                         args.lfw_test_list, args.batch_size,
-                                                                        model_out, images_placeholder, isTrain_placeholder)
+                                                                        model_out_verify, images_placeholder,
+                                                                        # isTrain_placeholder
+                                                                        )
 
                         log = '\r\nlfw face verification accuracy: %f   threshold: %f' % (accuracy, threshold)
                         write_log_file(log_filename, log)
