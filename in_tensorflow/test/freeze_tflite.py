@@ -16,10 +16,10 @@ import argparse
 
 def get_parser():
     parser = argparse.ArgumentParser(description='parameters to train net')
-    parser.add_argument('--filename_graph', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-23\model_graph.pb')
-    parser.add_argument('--filename_checkpoint', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-23\ckpt\InsightFace_iter_100.ckpt')
-    parser.add_argument('--filename_frozenModel', default=r'model_frozen.pb')
-    parser.add_argument('--filename_tflite', default=r'converted_model.tflite')
+    parser.add_argument('--filename_graph', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\model_graph.pb')
+    parser.add_argument('--filename_checkpoint', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\ckpt\InsightFace_iter_300.ckpt')
+    parser.add_argument('--filename_frozenModel', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\MobileNetV3_InsightFace_frozen.pb')
+    parser.add_argument('--filename_tflite', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\MobileNetV3_InsightFace.tflite')
     args = parser.parse_args()
     return args
 
@@ -47,7 +47,7 @@ def freeze_graph_and_parameter(args):
                  input_saver=None,
                  input_binary=False,
                  input_checkpoint=filename_checkpoint,
-                 output_node_names="embeddings",
+                 output_node_names="Logits_out/output",
                  restore_op_name=None,
                  filename_tensor_name=None,
                  output_graph=filename_output,
@@ -62,8 +62,8 @@ def convert_tflite(args):
     """
     filename_model = args.filename_frozenModel
     filename_tflite = args.filename_tflite
-    input_arrays = ["placeholder_inputs"]
-    output_arrays = ["embeddings"]
+    input_arrays = ["inputs"]
+    output_arrays = ["Logits_out/output"]
 
     model_exp = os.path.expanduser(filename_model)
 
@@ -77,7 +77,7 @@ def convert_tflite(args):
     #         print(op.name)
 
     converter = tf.lite.TFLiteConverter.from_frozen_graph(filename_model, input_arrays, output_arrays)
-    converter.allow_custom_ops = True
+    # converter.allow_custom_ops = True
     tflite_model = converter.convert()
     open(filename_tflite, "wb").write(tflite_model)
 

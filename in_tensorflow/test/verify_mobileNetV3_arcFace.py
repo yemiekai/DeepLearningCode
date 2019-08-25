@@ -253,7 +253,8 @@ def lfw_test(args, img_paths, identity_list, ckpt_path):
 
 
 def test_on_lfw_when_training(sess, datas, identity_list, pair_list, batch_size, model_out_verify, images_placeholder,
-                              isTrain_placeholder):
+                              # isTrain_placeholder
+                              ):
     data_nums = len(datas)
     index = 0
     features = []
@@ -267,7 +268,8 @@ def test_on_lfw_when_training(sess, datas, identity_list, pair_list, batch_size,
 
         # 输入网络, 得到embeddings
         model_out = sess.run(model_out_verify, feed_dict={images_placeholder: datas[start:end],
-                                                          isTrain_placeholder: False})
+                                                          # isTrain_placeholder: False
+                                                          })
 
         # 用numpy.concatenate太慢了, 所以这里用list的append
         for logit in model_out:
@@ -280,7 +282,50 @@ def test_on_lfw_when_training(sess, datas, identity_list, pair_list, batch_size,
     return accuracy, threshold
 
 
-if __name__ == '__main__':
+# 用tflite跑一次模型, 一张图片
+def eval_one_tflite(img_path='yekai.png'):
+    model_path = r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\MobileNetV3_InsightFace.tflite'
+
+    imgs = load_image(img_path)
+
+    interpreter = tf.lite.Interpreter(model_path)
+    interpreter.allocate_tensors()
+
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    interpreter.set_tensor(input_details[0]['index'], imgs)
+    interpreter.invoke()
+    output_data = interpreter.get_tensor(output_details[0]['index'])
+    print(output_data)
+    return output_data
+
+
+# 用.pb文件跑一次模型, 一张图片
+def eval_one_pb():
+    img_path = 'yekai.png'
+    model_path = r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\MobileNetV3_InsightFace_frozen.pb'
+
+    imgs = load_image(img_path)
+
+    with tf.Session() as sess:
+        load_model(model_path)
+        for op in sess.graph.get_operations():  # 看看都有哪些变量, 找到变量才能跑
+            if 'input' in op.name or 'output' in op.name:
+                print(op.name)
+
+        _in = sess.graph.get_tensor_by_name("import/inputs:0")
+        _out = sess.graph.get_tensor_by_name("import/Logits_out/output:0")
+
+        # 输入网络, 得到embeddings
+        model_out = sess.run(_out, feed_dict={_in: imgs})
+        print("output:")
+        print(model_out)
+        return model_out
+
+
+# 用.pb文件在lfw数据集上验证一次
+def eval_lfw_pb():
     class Argument:
         def __init__(self):
             self.eval_batch_size = 32
@@ -332,4 +377,111 @@ if __name__ == '__main__':
             fe_dict = get_feature_dict(identity_list, features)
             accuracy, threshold = test_performance(fe_dict, args.lfw_test_list)
             print('\r\nlfw face verification accuracy: ', accuracy, 'threshold: ', threshold)
+
+
+# 用tflite文件在lfw数据集上验证一次
+def eval_lfw_tflite():
+    class Argument:
+        def __init__(self):
+            self.eval_batch_size = 32
+            self.image_size = (224, 224, 3)
+            self.embedding = 512
+            self.lfw_test_list = r'F:\DeepLearning_DataSet\lfw_test_pair.txt'
+            self.lfw_root = r'F:\DeepLearning_DataSet\LFW_mtcnnpy_224'
+            self.model_path = r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\MobileNetV3_InsightFace.tflite'
+
+    args = Argument()
+
+    # 验证集
+    identity_list = get_lfw_list(args.lfw_test_list)
+    lfw_img_paths = [os.path.join(args.lfw_root, each) for each in identity_list]  # 所有图片的路径
+    lfw_imgs = read_all(lfw_img_paths, args.image_size)
+
+    # 从ckpt恢复模型并验证
+    data_nums = len(lfw_imgs)
+    index = 0
+    features = []
+
+    # 加载模型
+    interpreter = tf.lite.Interpreter(args.model_path)
+    interpreter.allocate_tensors()
+
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    # 分批将data输入模型, 得到embeddings
+    while index < data_nums:
+        sys.stdout.write('\r>>verify in LFW, getting embeddings: [%d]' % index)
+        sys.stdout.flush()
+
+        interpreter.set_tensor(input_details[0]['index'], lfw_imgs[index:index+1])
+        interpreter.invoke()
+        output_data = interpreter.get_tensor(output_details[0]['index'])
+
+        for feature in output_data:
+            features.append(feature)
+
+        index += 1
+
+    fe_dict = get_feature_dict(identity_list, features)
+    accuracy, threshold = test_performance(fe_dict, args.lfw_test_list)
+    print('\r\nlfw face verification accuracy: ', accuracy, 'threshold: ', threshold)
+
+
+if __name__ == '__main__':
+    a = eval_one_tflite('yekai.png')
+    b = eval_one_tflite('yekai2.png')
+    c = cosin_metric(a[0], b[0])
+    print(c)
+    # class Argument:
+    #     def __init__(self):
+    #         self.eval_batch_size = 32
+    #         self.image_size = (224, 224, 3)
+    #         self.embedding = 512
+    #         self.lfw_test_list = r'E:\DataSets\LFW\lfw_test_pair.txt'
+    #         self.lfw_root = r'E:\DataSets\LFW\LFW_mtcnnpy_224'
+    #         self.ckpt_path = r'C:\Users\Administrator\Desktop\ckpt\1234566.pb'
+    #
+    # args = Argument()
+    #
+    # # 验证集
+    # identity_list = get_lfw_list(args.lfw_test_list)
+    # lfw_img_paths = [os.path.join(args.lfw_root, each) for each in identity_list]  # 所有图片的路径
+    # lfw_imgs = read_all(lfw_img_paths, args.image_size)
+    #
+    # # 从ckpt恢复模型并验证
+    # data_nums = len(lfw_imgs)
+    # index = 0
+    # features = []
+    # with tf.Graph().as_default() as g:
+    #     with tf.Session() as sess:
+    #
+    #         load_model(args.ckpt_path)
+    #         for op in sess.graph.get_operations():  # 看看都有哪些变量, 找到变量才能跑
+    #             if 'input' in op.name or 'output' in op.name:
+    #                 print(op.name)
+    #
+    #         _in = sess.graph.get_tensor_by_name("import/input:0")
+    #         _out = g.get_tensor_by_name("import/embeddings:0")
+    #         _train = g.get_tensor_by_name("import/placeholder_isTrain:0")
+    #
+    #         # 分批将data输入模型, 得到embeddings
+    #         while index < data_nums:
+    #             start = index
+    #             end = min(index + args.eval_batch_size, data_nums)
+    #             sys.stdout.write('\r>>verify in LFW, getting embeddings: [%d]' % end)
+    #             sys.stdout.flush()
+    #             batch_datas = lfw_imgs[start:end]
+    #
+    #             # 输入网络, 得到embeddings
+    #             model_out = sess.run(_out, feed_dict={_in: batch_datas, _train: False})
+    #
+    #             for feature in model_out:
+    #                 features.append(feature)
+    #
+    #             index += args.eval_batch_size
+    #
+    #         fe_dict = get_feature_dict(identity_list, features)
+    #         accuracy, threshold = test_performance(fe_dict, args.lfw_test_list)
+    #         print('\r\nlfw face verification accuracy: ', accuracy, 'threshold: ', threshold)
 
