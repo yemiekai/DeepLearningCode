@@ -1,8 +1,8 @@
 ## 在Android设备上使用TensorFlow有两种方法  
 ### 一. 通过[TensorFlow-Android](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/android)   
 这里也有两种方法： 
-#### 1.通过.so动态链接库  
-这需要编译，详情看上面的链接。   
+#### 1. 通过.so动态链接库  
+这需要编译，详情看上面链接里官方的说明。   
 #### 2. 通过引入Java JAR包，在AndroidStudio里添加library引用   
 在Android项目的`build.gradle`加入下面代码即可：
 ```
