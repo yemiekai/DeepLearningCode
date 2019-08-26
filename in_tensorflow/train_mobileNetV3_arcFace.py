@@ -20,8 +20,8 @@ def get_parser():
     parser.add_argument('--train_datasets_dir', default=r'F:\DeepLearning_DataSet\VGGFace2_train_mtcnnpy_224_tfrecord', help='train datasets base path')
     parser.add_argument('--lfw_test_list', default=r'F:\DeepLearning_DataSet\lfw_test_pair.txt')
     parser.add_argument('--lfw_root', default=r'F:\DeepLearning_DataSet\LFW_mtcnnpy_224')
+    parser.add_argument('--model', default='small')
 
-    parser.add_argument('--gpus', default=2, help='gpu nums')
     parser.add_argument('--batch_size', default=128, help='batch size to train network')
     parser.add_argument('--eval_batch_size', default=64, help='batch size to eval network')
     parser.add_argument('--image_size', default=(224, 224, 3))
@@ -37,7 +37,7 @@ def get_parser():
     # parser.add_argument('--eval_datasets', default=['lfw'], help='evluation datasets')
 
     parser.add_argument('--log_file_path', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow', help='the ckpt file save path')
-    parser.add_argument('--saver_maxkeep', default=30, help='tf.train.Saver max keep ckpt files')
+    parser.add_argument('--saver_maxkeep', default=50, help='tf.train.Saver max keep ckpt files')
     parser.add_argument('--log_device_mapping', default=False, help='show device placement log')
     parser.add_argument('--summary_interval', default=2000, help='interval to save summary')
     parser.add_argument('--ckpt_interval', default=2000, help='intervals to save ckpt file')
@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
         # 设置路径: 保存训练产生的数据
         date = time.strftime("%Y-%m-%d", time.localtime())
-        save_path = os.path.join(args.log_file_path, date)  # 保存的文件夹路径
+        save_path = os.path.join(args.log_file_path, args.model, date)  # 保存的文件夹路径
         log_filename = os.path.join(save_path, 'Console_Log.txt')  # 日志路径
         tflite_filename = os.path.join(save_path, 'mobileNetV3_small_insightFace.tflite')  # tflite路径
 

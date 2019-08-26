@@ -17,7 +17,7 @@ import argparse
 def get_parser():
     parser = argparse.ArgumentParser(description='parameters to train net')
     parser.add_argument('--filename_graph', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\model_graph.pb')
-    parser.add_argument('--filename_checkpoint', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\ckpt\InsightFace_iter_300.ckpt')
+    parser.add_argument('--filename_checkpoint', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\ckpt\InsightFace_iter_100000.ckpt')
     parser.add_argument('--filename_frozenModel', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\MobileNetV3_InsightFace_frozen.pb')
     parser.add_argument('--filename_tflite', default=r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\MobileNetV3_InsightFace.tflite')
     args = parser.parse_args()

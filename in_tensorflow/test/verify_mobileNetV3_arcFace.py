@@ -302,8 +302,7 @@ def eval_one_tflite(img_path='yekai.png'):
 
 
 # 用.pb文件跑一次模型, 一张图片
-def eval_one_pb():
-    img_path = 'yekai.png'
+def eval_one_pb(img_path='yekai.png'):
     model_path = r'E:\TrainingCache\mobileNetV3_arcFace_VGGFace_tensorflow\2019-08-25\MobileNetV3_InsightFace_frozen.pb'
 
     imgs = load_image(img_path)
@@ -429,10 +428,10 @@ def eval_lfw_tflite():
 
 
 if __name__ == '__main__':
-    a = eval_one_tflite('yekai.png')
-    b = eval_one_tflite('yekai2.png')
-    c = cosin_metric(a[0], b[0])
-    print(c)
+    a = eval_one_pb('yekai3.png')
+    # b = eval_one_pb('yekai2.png')
+    # c = cosin_metric(a[0], b[0])
+    # print(c)
     # class Argument:
     #     def __init__(self):
     #         self.eval_batch_size = 32

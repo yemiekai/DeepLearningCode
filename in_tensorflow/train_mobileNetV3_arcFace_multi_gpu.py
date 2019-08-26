@@ -4,9 +4,9 @@ import argparse
 import os
 import time
 
-from dataset.dataset_utils import *
-from models.mobilenet_v3 import *
-from test.verify_mobileNetV3_arcFace import *
+from in_tensorflow.dataset.dataset_utils import *
+from in_tensorflow.models.mobilenet_v3 import *
+from in_tensorflow.test.verify_mobileNetV3_arcFace import *
 
 
 def get_parser():
