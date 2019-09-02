@@ -28,7 +28,7 @@ def freeze_graph_and_parameter(args):
     """
     将[计算图]和[参数]固化到.pb文件里
     """
-    # 计算图的路径, 通过tf.io.write_graph得到
+    # 计算图的路径, 训练模型的时候通过tf.io.write_graph得到
     filename_graph = args.filename_graph
 
     # ckpt的路径
@@ -42,7 +42,7 @@ def freeze_graph_and_parameter(args):
     # 输出结果的路径
     filename_output = args.filename_frozenModel
 
-    # 把图和参数结合一起
+    # 把图和参数结合一起, 这里output_node_names是输出节点的名字, 可以通过sess.graph.get_operations()找到你的网络所有节点名字
     freeze_graph(input_graph=filename_graph,
                  input_saver=None,
                  input_binary=False,
