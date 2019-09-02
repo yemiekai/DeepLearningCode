@@ -1,9 +1,9 @@
-## 在Android设备上使用TensorFlow有两种方法  
+## 在Android设备上使用TensorFlow有两种方法
+  
 ### 一. 通过[TensorFlow-Android](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/android)   
-这里也有两种方法： 
-#### 1. 通过.so动态链接库  
-这需要编译，详情看上面链接里官方的说明。   
-#### 2. 通过引入Java JAR包，在AndroidStudio里添加library引用   
+#### 1. 得到TensorFlow的jar包
+我是用的方法一
+##### 方法一： 直接引用TensorFlow AAR包(在AndroidStudio里添加library引用) 
 在Android项目的`build.gradle`加入下面代码即可：
 ```
 allprojects {
@@ -23,7 +23,11 @@ dependencies {
 }
 ```
 **注意**：这里的版本必须高于等于训练时用的版本，否则在Android下`new TensorFlowInferenceInterface(AssetManager assetManager, String model)`时会加载模型失败。    
-所有版本可以在这里找到：https://jcenter.bintray.com/org/tensorflow/  
+所有已发布的版本可以在这里找到：https://jcenter.bintray.com/org/tensorflow/    
+##### 方法二：自己编译 
+详情看上面[链接](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/android)里官方的说明。   
+  
+  
 ### 二.使用TensorFlow Lite
 要将TensorFlow模型转换成.tflite
 #### 方法:
