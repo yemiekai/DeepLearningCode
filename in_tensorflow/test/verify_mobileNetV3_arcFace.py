@@ -195,7 +195,7 @@ def read_all(img_paths, input_shape):
         images.append(image[0])
 
     print("read LFW done.")
-    return images
+    return np.array(images)
 
 
 def get_featurs(args, test_list, batch_size, input_shape, ckpt_path):
@@ -252,9 +252,8 @@ def lfw_test(args, img_paths, identity_list, ckpt_path):
     return accuracy, threshold
 
 
-def test_on_lfw_when_training(sess, datas, identity_list, pair_list, batch_size, model_out_verify, images_placeholder,
-                              # isTrain_placeholder
-                              ):
+def test_on_lfw_when_training(sess, datas, identity_list, pair_list, batch_size, model_out, images_placeholder,
+                              isTrain_placeholder):
     data_nums = len(datas)
     index = 0
     features = []
@@ -267,12 +266,11 @@ def test_on_lfw_when_training(sess, datas, identity_list, pair_list, batch_size,
         sys.stdout.flush()
 
         # 输入网络, 得到embeddings
-        model_out = sess.run(model_out_verify, feed_dict={images_placeholder: datas[start:end],
-                                                          # isTrain_placeholder: False
-                                                          })
+        model_out1 = sess.run(model_out, feed_dict={images_placeholder: datas[start:end],
+                                                          isTrain_placeholder: False})
 
         # 用numpy.concatenate太慢了, 所以这里用list的append
-        for logit in model_out:
+        for logit in model_out1:
             features.append(logit)
 
         index += batch_size
@@ -327,13 +325,14 @@ def eval_one_pb(img_path='yekai.png'):
 def eval_lfw_pb():
     class Argument:
         def __init__(self):
-            self.eval_batch_size = 32
-            self.image_size = (224, 224, 3)
+            self.eval_batch_size = 2
+            self.image_size = (112, 112, 3)
             self.embedding = 512
-            self.lfw_test_list = r'E:\DataSets\LFW\lfw_test_pair.txt'
-            self.lfw_root = r'E:\DataSets\LFW\LFW_mtcnnpy_224'
-            self.ckpt_path = r'C:\Users\Administrator\Desktop\ckpt\1234566.pb'
-
+            self.lfw_test_list = r'E:\DeepLearning_DataSet\lfw_test_pair_jpg.txt'
+            self.lfw_root = r'E:\DeepLearning_DataSet\LFW_funneled_align_112'
+            self.ckpt_path = r'C:\Users\Administrator\Desktop\model_graph_162000.pb'
+                # batch1: 162000: 0.97766 1.340719860665204     298000: 0.9768333  1.35629
+                # batch2: 162000:  0.9773 1.37006213721583      298000: 0.9755    1.40122
     args = Argument()
 
     # 验证集
@@ -350,11 +349,14 @@ def eval_lfw_pb():
 
             load_model(args.ckpt_path)
             for op in sess.graph.get_operations():  # 看看都有哪些变量, 找到变量才能跑
-                if 'input' in op.name or 'output' in op.name:
+                if 'input' in op.name \
+                        or 'output' in op.name \
+                        or 'isTrain' in op.name \
+                        or 'embedding' in op.name:
                     print(op.name)
 
-            _in = sess.graph.get_tensor_by_name("import/input:0")
-            _out = g.get_tensor_by_name("import/embeddings:0")
+            _in = sess.graph.get_tensor_by_name("import/inputs:0")
+            _out = g.get_tensor_by_name("import/Logits_out/output:0")
             _train = g.get_tensor_by_name("import/placeholder_isTrain:0")
 
             # 分批将data输入模型, 得到embeddings
@@ -428,7 +430,8 @@ def eval_lfw_tflite():
 
 
 if __name__ == '__main__':
-    a = eval_one_pb('yekai3.png')
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    a = eval_lfw_pb( )
     # b = eval_one_pb('yekai2.png')
     # c = cosin_metric(a[0], b[0])
     # print(c)
