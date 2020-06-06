@@ -100,21 +100,22 @@ if __name__ == '__main__':
                 
     # print(tf.test.gpu_device_name())
     # print(tf.test.is_gpu_available())
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 使0号显卡可见
 
     with tf.Graph().as_default():
 
         args = get_parser()
 
         # 设置路径: 保存训练产生的数据
-        date = time.strftime("%Y-%m-%d", time.localtime())
+        date = time.strftime("%Y-%m-%d", time.localtime())  # 当前日期(字符串)
         # date += "-1"
         save_path = os.path.join(args.log_file_path, date)  # 保存的文件夹路径
         log_filename = os.path.join(save_path, 'Console_Log.txt')  # 日志路径
         tflite_filename = os.path.join(save_path, 'mobileNetV3_small_insightFace.tflite')  # tflite路径
-
         ckpt_path = os.path.join(save_path, 'ckpt')  # 保存ckpt的路径
         summary_path = os.path.join(save_path, 'summary')  # 保存summary的路径
+
+        # 创建文件夹
         os.makedirs(save_path, exist_ok=True)
         os.makedirs(ckpt_path, exist_ok=True)
         os.makedirs(summary_path, exist_ok=True)
@@ -131,7 +132,7 @@ if __name__ == '__main__':
         lfw_img_paths = [os.path.join(args.lfw_root, each) for each in identity_list]  # 所有图片的路径
         lfw_images_list = read_all(lfw_img_paths, args.image_size)  # 所有图像(numpy数组)
 
-        # 训练集(先要把原图转成tfrecord, 见dataset/conver_VGGFace2)
+        # 准备训练集(先要把原图转成tfrecord, 见dataset/conver_VGGFace2)
         tfrecord_files = []
         for record_file in os.listdir(args.train_datasets_dir):  # dataset_dir所有文件名
             path = os.path.join(args.train_datasets_dir, record_file)
@@ -144,15 +145,19 @@ if __name__ == '__main__':
         dataset = dataset.batch(batch_size=args.batch_size)
         iterator = dataset.make_initializable_iterator()
 
-        next_element = iterator.get_next()
+        next_element = iterator.get_next()  # 取数据
 
         # 学习率
         lr = tf.train.piecewise_constant(global_step, boundaries=args.lr_boundaries, values=args.lr_values, name='lr_schedule')
+
+        # 优化器
         optimiser = tf.train.MomentumOptimizer(learning_rate=lr, momentum=args.momentum)
         # optimiser = tf.train.RMSPropOptimizer(learning_rate=lr, momentum=args.momentum)
-        
+
+        # 超参数初始化方法
         w_init_method = tf.contrib.layers.xavier_initializer(uniform=True)
 
+        # 得到模型输出的embedding
         model_out, end_points = mobilenet_v3_small(inputs=images_placeholder,
                                                    classes_num=args.embedding,
                                                    multiplier=1.0,
@@ -163,12 +168,16 @@ if __name__ == '__main__':
         #                                                          multiplier=1.0,
         #                                                          is_training=False,
         #                                                          reuse=True)
+        # 重新命名，以便查找
         model_out = tf.identity(model_out, 'embeddings')
 
+        # ArcFace损失函数, 详情见ArcFace论文
         arcface_logit = arcface_loss(embedding=model_out,
                                      labels=labels_placeholder,
                                      w_init=w_init_method,
                                      out_num=args.num_classes)
+
+        # 交叉熵
         cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=arcface_logit,
                                                                        labels=labels_placeholder,
                                                                        name='cross_entropy_per_example')
@@ -176,18 +185,20 @@ if __name__ == '__main__':
 
         tf.add_to_collection('losses', inference_loss)
         losses = tf.get_collection('losses')
-        total_loss = tf.add_n(losses, name='total_loss')
+        total_loss = tf.add_n(losses, name='total_loss')  # 最终的损失
 
         summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-        grads = optimiser.compute_gradients(total_loss)
+        grads = optimiser.compute_gradients(total_loss)  # 计算反向传播的梯度
 
+        # 关于“滑动指数平均”可以看《实战Google深度学习框架》
         variable_averages = tf.train.ExponentialMovingAverage(args.moving_average_decay, global_step)
         variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
-            train_op = optimiser.apply_gradients(grads, global_step=global_step)
+            train_op = optimiser.apply_gradients(grads, global_step=global_step)  # 优化器用梯度对网络参数进行更新(训练)
 
+        # GPU配置
         config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=args.log_device_mapping)
         config.gpu_options.allow_growth = True
         sess = tf.Session(config=config)
@@ -218,10 +229,10 @@ if __name__ == '__main__':
         count = 0
 
         for i in range(args.epoch):
-            sess.run(iterator.initializer)
+            sess.run(iterator.initializer)  # 准备数据集
             while True:
                 try:
-                    images_train, labels_train = sess.run(next_element)
+                    images_train, labels_train = sess.run(next_element)  # 取一次数据
                     feed_dict = {images_placeholder: images_train,
                                  labels_placeholder: labels_train,
                                  isTrain_placeholder: True
@@ -232,15 +243,15 @@ if __name__ == '__main__':
                     count += 1
                     end = time.time()
 
-                    pre_sec = args.batch_size/(end - start)
+                    pre_sec = args.batch_size/(end - start)  # 训练速度：*个样本每秒
 
                     # 打印训练情况
                     if count > 0 and count % args.show_info_interval == 0:
                         time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
                         log = '[%s] epoch:%d  total_step:%d  lr:%.5f  total loss:%.2f  time:%.3f samples/sec' % \
                               (time_str, i, count, _lr, _total_loss, pre_sec)
-                        write_log_file(log_filename, log)
-                        print(log)
+                        write_log_file(log_filename, log)  # 写到文件里
+                        print(log)  # 输出到控制台
 
                     # save summary
                     # if count > 0 and count % args.summary_interval == 0:

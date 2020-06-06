@@ -182,7 +182,8 @@ def mobilenet_v3_block(input, k_s, expansion_ratio, output_dim, in_channels, str
 
         # 没有下采样时，采用ShuffleNetV2的block
         if stride == 1:
-            top, bottom = tf.split(input, num_or_size_splits=2, axis=3)  # 把通道切2份
+            # 把通道切为2份
+            top, bottom = tf.split(input, num_or_size_splits=2, axis=3)
 
             half_channel = output_dim // 2
 
@@ -207,6 +208,7 @@ def mobilenet_v3_block(input, k_s, expansion_ratio, output_dim, in_channels, str
             # 通道混洗
             net = shuffle_unit(net, 2)
 
+        # stride为2时是下采样, 图片的宽和高减少一半, 通道数增加一倍
         else:
             # 点卷积, 扩展到高维
             net = _conv_1x1_bn(input, bottleneck_dim, name="pw", use_bias=use_bias)
